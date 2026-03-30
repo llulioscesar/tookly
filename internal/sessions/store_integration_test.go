@@ -13,7 +13,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/start-codex/trazawork/internal/testpg"
+	"github.com/start-codex/tookly/internal/testpg"
 )
 
 func TestCreateSession(t *testing.T) {

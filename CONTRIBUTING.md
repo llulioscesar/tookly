@@ -1,15 +1,15 @@
-# Contributing to Traza Work
+# Contributing to Tookly
 
-We welcome contributions to Traza Work. Before you start, please review this guide.
+We welcome contributions to Tookly. Before you start, please review this guide.
 
 ## Contributor License Agreement
 
-All contributors must agree to our [Contributor License Agreement](CLA.md) before their first pull request can be merged. This is required because Traza Work is dual-licensed:
+All contributors must agree to our [Contributor License Agreement](CLA.md) before their first pull request can be merged. This is required because Tookly is dual-licensed:
 
-- **Traza Work** is available under [BSL 1.1](LICENSE) — free to use, modify, and self-host. Converts to Apache 2.0 after 4 years per version.
-- **Traza Work Cloud** is a commercial SaaS product maintained by Start Codex SAS, built on top of Traza Work.
+- **Tookly** is available under [BSL 1.1](LICENSE) — free to use, modify, and self-host. Converts to Apache 2.0 after 4 years per version.
+- **Tookly Cloud** is a commercial SaaS product maintained by Start Codex SAS, built on top of Tookly.
 
-The CLA ensures that contributions to the open source project can also be included in Traza Work Cloud. Your contribution will always remain available under BSL 1.1 in this repository.
+The CLA ensures that contributions to the open source project can also be included in Tookly Cloud. Your contribution will always remain available under BSL 1.1 in this repository.
 
 When you open your first pull request, the CLA Assistant bot will ask you to sign. This is a one-time step.
 

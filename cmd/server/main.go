@@ -16,7 +16,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/start-codex/trazawork/migrations"
+	"github.com/start-codex/tookly/migrations"
 )
 
 func main() {

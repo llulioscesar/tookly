@@ -1,6 +1,6 @@
 # Changelog
 
-This file tracks notable changes to Traza Work.
+This file tracks notable changes to Tookly.
 
 The project does not use tagged releases yet. Until versioning starts, history is recorded using an `Unreleased` section for ongoing work, plus dated milestone entries for committed historical work.
 
@@ -46,7 +46,7 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 - Changed workspace admin routes (`DELETE /workspaces/{id}`, member management) to require admin/owner role
 - Changed project admin routes (`POST /workspaces/{id}/projects`, `DELETE /projects/{id}`, member management) to require workspace admin/owner role
 - Changed authz resource resolution to allow archived projects, boards, and columns (domain handlers decide visibility)
-- Changed project name from Taskcore to Traza Work (domain: trazawork.com)
+- Changed project name from Taskcore to Traza Work, then to Tookly
 - Changed license from AGPL-3.0 to BSL 1.1
 - Changed workspace creation to add creator as owner member in a single transaction
 - Changed sidebar workspace selection to sync via URL navigation instead of local state

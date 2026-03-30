@@ -58,7 +58,7 @@
 				<Breadcrumb.Root>
 					<Breadcrumb.List>
 						<Breadcrumb.Item class="hidden md:block">
-							<Breadcrumb.Link href="/{data.workspace.slug}">Traza Work</Breadcrumb.Link>
+							<Breadcrumb.Link href="/{data.workspace.slug}">Tookly</Breadcrumb.Link>
 						</Breadcrumb.Item>
 						<Breadcrumb.Separator class="hidden md:block" />
 						{#each crumbs as crumb, i}

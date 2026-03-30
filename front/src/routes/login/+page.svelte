@@ -14,7 +14,7 @@
 					<rect width="8" height="8" x="2" y="14" rx="2" /><rect width="8" height="8" x="14" y="14" rx="2" />
 				</svg>
 			</div>
-			Traza Work
+			Tookly
 		</a>
 		<LoginForm />
 	</div>

@@ -1,6 +1,6 @@
-# Traza Work
+# Tookly
 
-Traza Work is a source-available workflow platform for teams. Capture ideas, plan work, track execution, and follow through — regardless of your industry or methodology.
+Tookly is a source-available workflow platform for teams. Capture ideas, plan work, track execution, and follow through — regardless of your industry or methodology.
 
 Software delivery is the first deeply defined workflow: documentation, decisions, and architecture feed the backlog, roadmap, and sprints. The long-term goal is broader: any team, any domain.
 
@@ -11,9 +11,9 @@ Software delivery is the first deeply defined workflow: documentation, decisions
 - Self-hostable — no vendor lock-in, no paywalled core features.
 - Simple to start, flexible to grow — works for a two-person team and scales to an organization.
 
-## Why Traza Work
+## Why Tookly
 
-| | Traza Work | Jira + Confluence |
+| | Tookly | Jira + Confluence |
 |---|---|---|
 | Self-hosted | Yes | Paid / complex |
 | Docs and planning together | Yes (target) | Split products |
@@ -21,7 +21,7 @@ Software delivery is the first deeply defined workflow: documentation, decisions
 | Cross-industry templates | Planned | Available but expensive |
 | Source-available | Yes (BSL 1.1) | No |
 
-Jira is a useful reference for software workflows. Traza Work is not a clone — it is a workflow platform with its own identity.
+Jira is a useful reference for software workflows. Tookly is not a clone — it is a workflow platform with its own identity.
 
 ## Current product baseline
 
@@ -58,8 +58,8 @@ Summary:
 ## Getting started
 
 ```bash
-git clone https://github.com/start-codex/trazawork
-cd trazawork
+git clone https://github.com/start-codex/tookly
+cd tookly
 docker compose up --build
 ```
 
@@ -117,4 +117,4 @@ Business Source License 1.1 — see [LICENSE](LICENSE) for details.
 - **Competing SaaS**: not permitted under BSL. Contact licensing@startcodex.com for commercial licensing.
 - **Change date**: each version converts to Apache License 2.0 four years after release.
 
-Traza Work is source-available. [Traza Work Cloud](https://trazawork.com) is a commercial SaaS product maintained by Start Codex SAS.
+Tookly is source-available. [Tookly Cloud](https://tookly.com) is a commercial SaaS product maintained by Start Codex SAS.

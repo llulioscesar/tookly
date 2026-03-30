@@ -9,7 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 
-	"github.com/start-codex/trazawork/ui"
+	"github.com/start-codex/tookly/ui"
 )
 
 // registerUI mounts the embedded SPA under "/". API routes registered before

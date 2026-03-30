@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/authz"
-	"github.com/start-codex/trazawork/internal/respond"
-	"github.com/start-codex/trazawork/internal/sessions"
+	"github.com/start-codex/tookly/internal/authz"
+	"github.com/start-codex/tookly/internal/respond"
+	"github.com/start-codex/tookly/internal/sessions"
 )
 
 type statusWriter struct {

@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/pgutil"
+	"github.com/start-codex/tookly/internal/pgutil"
 )
 
 const selectCols = `id, workspace_id, name, key, description, created_at, updated_at, archived_at`

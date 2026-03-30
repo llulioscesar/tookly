@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/pgutil"
+	"github.com/start-codex/tookly/internal/pgutil"
 )
 
 const userCols = `id, email, name, created_at, updated_at, archived_at`

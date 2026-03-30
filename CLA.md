@@ -1,6 +1,6 @@
 # Contributor License Agreement
 
-Thank you for your interest in contributing to Traza Work, a project owned and maintained by Start Codex ("Company").
+Thank you for your interest in contributing to Tookly, a project owned and maintained by Start Codex ("Company").
 
 By submitting a contribution (via pull request, patch, or any other mechanism) to this repository, you agree to the following terms. Start Codex SAS (NIT 901599365-2), registered in Aguachica, Cesar, Colombia.
 
@@ -32,7 +32,7 @@ You understand that the decision to include your Contribution in any product or 
 
 ## 6. Dual Licensing
 
-You acknowledge that the Company may license the project (including your Contributions) under additional license terms, including commercial or proprietary licenses, for use in products and services offered by the Company (such as Traza Work Cloud). Your Contribution will always remain available under the project's source-available license (currently BSL 1.1, converting to Apache 2.0 after the change date) in this repository.
+You acknowledge that the Company may license the project (including your Contributions) under additional license terms, including commercial or proprietary licenses, for use in products and services offered by the Company (such as Tookly Cloud). Your Contribution will always remain available under the project's source-available license (currently BSL 1.1, converting to Apache 2.0 after the change date) in this repository.
 
 ## 7. How to Sign
 
