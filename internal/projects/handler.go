@@ -10,8 +10,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/authz"
-	"github.com/start-codex/trazawork/internal/respond"
+	"github.com/start-codex/tookly/internal/authz"
+	"github.com/start-codex/tookly/internal/respond"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {

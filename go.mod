@@ -1,4 +1,4 @@
-module github.com/start-codex/trazawork
+module github.com/start-codex/tookly
 
 go 1.26
 

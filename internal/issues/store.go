@@ -12,7 +12,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/pgutil"
+	"github.com/start-codex/tookly/internal/pgutil"
 )
 
 const reorderOffset = 1000000

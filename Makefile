@@ -1,7 +1,7 @@
 .PHONY: help db-up db-down db-logs db-shell migrate-up migrate-down migrate-status migrate-create
 
 # Default database URL
-DB_URL ?= postgres://trazawork:trazawork@localhost:5432/trazawork?sslmode=disable
+DB_URL ?= postgres://tookly:tookly@localhost:5432/tookly?sslmode=disable
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -13,7 +13,7 @@ help: ## Show this help
 db-up: ## Start PostgreSQL database
 	docker compose up -d db
 	@echo "Waiting for database to be ready..."
-	@docker compose exec db pg_isready -U trazawork -d trazawork --timeout=30 || (echo "Retrying..." && timeout /t 3 /nobreak >nul && docker compose exec db pg_isready -U trazawork -d trazawork)
+	@docker compose exec db pg_isready -U tookly -d tookly --timeout=30 || (echo "Retrying..." && timeout /t 3 /nobreak >nul && docker compose exec db pg_isready -U tookly -d tookly)
 	@echo "Database ready at localhost:5432"
 
 db-down: ## Stop PostgreSQL database
@@ -23,7 +23,7 @@ db-logs: ## Show database logs
 	docker compose logs -f db
 
 db-shell: ## Open psql shell
-	docker exec -it trazawork-db psql -U trazawork -d trazawork
+	docker exec -it tookly-db psql -U tookly -d tookly
 
 db-reset: db-down ## Reset database (destroy all data)
 	rm -rf .docker/postgres

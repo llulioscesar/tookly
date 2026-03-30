@@ -9,13 +9,13 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/start-codex/trazawork/internal/boards"
-	"github.com/start-codex/trazawork/internal/issues"
-	"github.com/start-codex/trazawork/internal/issuetypes"
-	"github.com/start-codex/trazawork/internal/projects"
-	"github.com/start-codex/trazawork/internal/statuses"
-	"github.com/start-codex/trazawork/internal/users"
-	"github.com/start-codex/trazawork/internal/workspaces"
+	"github.com/start-codex/tookly/internal/boards"
+	"github.com/start-codex/tookly/internal/issues"
+	"github.com/start-codex/tookly/internal/issuetypes"
+	"github.com/start-codex/tookly/internal/projects"
+	"github.com/start-codex/tookly/internal/statuses"
+	"github.com/start-codex/tookly/internal/users"
+	"github.com/start-codex/tookly/internal/workspaces"
 )
 
 // newAPIHandler builds the API sub-mux with auth middleware and all domain routes.

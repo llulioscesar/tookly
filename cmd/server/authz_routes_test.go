@@ -15,9 +15,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"github.com/start-codex/trazawork/internal/authz"
-	"github.com/start-codex/trazawork/internal/sessions"
-	"github.com/start-codex/trazawork/internal/testpg"
+	"github.com/start-codex/tookly/internal/authz"
+	"github.com/start-codex/tookly/internal/sessions"
+	"github.com/start-codex/tookly/internal/testpg"
 )
 
 // setupTestServer creates a test HTTP server with the full API handler stack.
