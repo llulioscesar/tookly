@@ -75,6 +75,12 @@
   "settings_users_title": "Users",
   "settings_account_title": "Account",
 
+  "board_filter_assignee": "Assignee",
+  "board_filter_priority": "Priority",
+  "board_filter_type": "Type",
+  "board_filter_all": "All",
+  "board_filter_clear": "Clear filters",
+
   "issue_detail_title": "Title",
   "issue_detail_description": "Description",
   "issue_detail_priority": "Priority",

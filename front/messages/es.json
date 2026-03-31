@@ -75,6 +75,12 @@
   "settings_users_title": "Usuarios",
   "settings_account_title": "Cuenta",
 
+  "board_filter_assignee": "Asignado",
+  "board_filter_priority": "Prioridad",
+  "board_filter_type": "Tipo",
+  "board_filter_all": "Todos",
+  "board_filter_clear": "Limpiar filtros",
+
   "issue_detail_title": "Título",
   "issue_detail_description": "Descripción",
   "issue_detail_priority": "Prioridad",

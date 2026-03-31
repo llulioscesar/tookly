@@ -39,7 +39,7 @@ The core platform infrastructure and first working end-to-end flow.
 
 ---
 
-## Phase 1 — MVP hardening `[in progress]`
+## Phase 1 — MVP hardening `[shipped]`
 
 Close the gap between what the backend supports and what the UI delivers. Deliver a fully usable, secure baseline.
 
@@ -55,7 +55,7 @@ Close the gap between what the backend supports and what the UI delivers. Delive
 - PR 21 `[shipped]` — Add `due_date` to issue update and create API contracts.
 - PR 22 `[shipped]` — Issue detail page: view and edit title, description, priority, assignee, due date.
 - PR 23 `[shipped]` — Board drag-and-drop: move issues between columns with optimistic updates.
-- PR 24 `[pending]` — Basic board filters: client-side filtering by assignee, priority, and issue type.
+- PR 24 `[shipped]` — Basic board filters: client-side filtering by assignee, priority, and issue type.
 
 ---
 

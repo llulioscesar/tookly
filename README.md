@@ -43,6 +43,7 @@ What is shipped today:
 - Boards, statuses, issue types, issues CRUD.
 - Board drag-and-drop: move issues between columns and reorder within columns.
 - Issue detail page: view and edit title, description, priority, assignee, due date.
+- Basic board filters: client-side filtering by assignee, priority, and issue type.
 - Local email/password authentication with server-side sessions.
 - Workspace and project membership enforcement with admin/owner roles.
 - Internationalization: English and Spanish.
@@ -64,7 +65,7 @@ See [docs/05-roadmap.md](docs/05-roadmap.md) for the full phased roadmap.
 
 Summary:
 - **Phase 0 — Foundation** `[shipped]` — core backend, domains, templates, i18n.
-- **Phase 1 — MVP hardening** `[in progress]` — full auth, membership enforcement, board UI, issue detail.
+- **Phase 1 — MVP hardening** `[shipped]` — full auth, membership enforcement, board UI, issue detail, board filters.
 - **Phase 1.5 — Identity, onboarding, and instance admin** `[planned]` — SMTP, password reset, invitations, SSO/OIDC, first-install bootstrap.
 - **Phase 2 — Software workflow depth** `[planned]` — issue hierarchy, sprints, backlog, planning board.
 - **Phase 3 — Documentation-led planning** `[planned]` — project pages, decision records, doc↔work item links.
