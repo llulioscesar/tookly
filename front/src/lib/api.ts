@@ -64,7 +64,10 @@ export const auth = {
 	me: () => get<{ authenticated: boolean; user?: User }>('/auth/me'),
 	logout: () => post<void>('/auth/logout', {}),
 	changePassword: (body: { current_password: string; new_password: string }) =>
-		post<void>('/auth/change-password', body)
+		post<void>('/auth/change-password', body),
+	forgotPassword: (body: { email: string }) => post<void>('/auth/forgot-password', body),
+	resetPassword: (body: { token: string; new_password: string }) =>
+		post<void>('/auth/reset-password', body)
 };
 
 // --- Users ---

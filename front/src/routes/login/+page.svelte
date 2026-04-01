@@ -2,7 +2,13 @@
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 <script lang="ts">
+	import { page } from '$app/state';
 	import LoginForm from "$lib/components/login-form.svelte";
+	import * as m from '$lib/paraglide/messages';
+	import { i18n } from '$lib/i18n.svelte';
+
+	const resetSuccess = $derived(page.url.searchParams.get('reset') === 'success');
+	const successMsg = $derived.by(() => { i18n.locale; return m.login_reset_success(); });
 </script>
 
 <div class="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -16,6 +22,11 @@
 			</div>
 			Tookly
 		</a>
+		{#if resetSuccess}
+			<div class="rounded-md bg-green-50 p-3 text-center text-sm text-green-700 border border-green-200">
+				{successMsg}
+			</div>
+		{/if}
 		<LoginForm />
 	</div>
 </div>

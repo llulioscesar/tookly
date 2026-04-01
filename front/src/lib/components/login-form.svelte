@@ -37,7 +37,8 @@
 			submit: m.login_submit(),
 			signingIn: m.login_signing_in(),
 			noAccount: m.login_no_account(),
-			terms: m.login_terms()
+			terms: m.login_terms(),
+			forgotPassword: m.login_forgot_password()
 		};
 	});
 
@@ -76,8 +77,9 @@
 						/>
 					</Field>
 					<Field>
-						<div class="flex items-center">
+						<div class="flex items-center justify-between">
 							<FieldLabel for="password-{id}">{t.password}</FieldLabel>
+							<a href="/forgot-password" class="text-xs underline-offset-4 hover:underline text-muted-foreground">{t.forgotPassword}</a>
 						</div>
 						<Input id="password-{id}" type="password" required bind:value={password} />
 					</Field>

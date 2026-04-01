@@ -11,6 +11,9 @@ Contributors should add ongoing changes to the `Unreleased` section. When a mile
 ## [Unreleased]
 
 ### Added
+- Added forgot password page at `/forgot-password` and reset password page at `/reset-password`
+- Added "Forgot password?" link to login form
+- Added success banner on login after password reset
 - Added forgot/reset password flow: `POST /auth/forgot-password` and `POST /auth/reset-password`
 - Added `internal/passwordreset` package with token-based reset (SHA-256, 1h TTL, one-time use)
 - Added `users.SetPassword` for password reset without current password verification
