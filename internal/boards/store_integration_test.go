@@ -21,46 +21,46 @@ func TestCreateBoard(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		arrange func(*testing.T, *sqlx.DB) (CreateBoardParams, func(*testing.T))
+		arrange func(*testing.T, *sqlx.DB) (CreateParams, func(*testing.T))
 		wantErr error
 	}{
 		{
 			name: "creates kanban board",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				proj := seedProject(t, db)
-				params := CreateBoardParams{ProjectID: proj, Name: "Main Board", Type: "kanban"}
+				params := CreateParams{ProjectID: proj, Name: "Main Board", Type: "kanban"}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "creates scrum board",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				proj := seedProject(t, db)
-				params := CreateBoardParams{ProjectID: proj, Name: "Sprint Board", Type: "scrum", FilterQuery: "type=story"}
+				params := CreateParams{ProjectID: proj, Name: "Sprint Board", Type: "scrum", FilterQuery: "type=story"}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name:    "duplicate name in same project",
-			wantErr: ErrDuplicateBoardName,
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
+			wantErr: ErrDuplicateName,
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				proj := seedProject(t, db)
-				if _, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Dup", Type: "kanban"}); err != nil {
+				if _, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Dup", Type: "kanban"}); err != nil {
 					t.Fatalf("seed board: %v", err)
 				}
-				return CreateBoardParams{ProjectID: proj, Name: "Dup", Type: "kanban"}, nil
+				return CreateParams{ProjectID: proj, Name: "Dup", Type: "kanban"}, nil
 			},
 		},
 		{
 			name: "same name in different projects is allowed",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateBoardParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				ws := testpg.SeedWorkspace(t, db)
 				proj1 := testpg.SeedProject(t, db, ws, "PRJ")
 				proj2 := testpg.SeedProject(t, db, ws, "OTH")
-				if _, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj1, Name: "Board", Type: "kanban"}); err != nil {
+				if _, err := Create(context.Background(), db, CreateParams{ProjectID: proj1, Name: "Board", Type: "kanban"}); err != nil {
 					t.Fatalf("seed board proj1: %v", err)
 				}
-				return CreateBoardParams{ProjectID: proj2, Name: "Board", Type: "kanban"}, nil
+				return CreateParams{ProjectID: proj2, Name: "Board", Type: "kanban"}, nil
 			},
 		},
 	}
@@ -68,7 +68,7 @@ func TestCreateBoard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, check := tt.arrange(t, db)
-			got, err := CreateBoard(context.Background(), db, params)
+			got, err := Create(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateBoard() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -103,7 +103,7 @@ func TestGetBoard(t *testing.T) {
 			name: "returns existing board",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				proj := seedProject(t, db)
-				board, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Board", Type: "kanban"})
+				board, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Board", Type: "kanban"})
 				if err != nil {
 					t.Fatalf("seed board: %v", err)
 				}
@@ -112,7 +112,7 @@ func TestGetBoard(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrBoardNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				return "00000000-0000-0000-0000-000000000000", nil
 			},
@@ -122,7 +122,7 @@ func TestGetBoard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id, check := tt.arrange(t, db)
-			got, err := GetBoard(context.Background(), db, id)
+			got, err := Get(context.Background(), db, id)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("GetBoard() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -149,15 +149,15 @@ func TestListBoards(t *testing.T) {
 			name: "returns only active boards",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T, []Board)) {
 				proj := seedProject(t, db)
-				active, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Active", Type: "kanban"})
+				active, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Active", Type: "kanban"})
 				if err != nil {
 					t.Fatalf("seed active board: %v", err)
 				}
-				archived, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Archived", Type: "kanban"})
+				archived, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Archived", Type: "kanban"})
 				if err != nil {
 					t.Fatalf("seed archived board: %v", err)
 				}
-				if err := ArchiveBoard(context.Background(), db, archived.ID); err != nil {
+				if err := Archive(context.Background(), db, archived.ID); err != nil {
 					t.Fatalf("archive board: %v", err)
 				}
 				return proj, func(t *testing.T, got []Board) {
@@ -186,7 +186,7 @@ func TestListBoards(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			projID, check := tt.arrange(t, db)
-			got, err := ListBoards(context.Background(), db, projID)
+			got, err := List(context.Background(), db, projID)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ListBoards() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -284,7 +284,7 @@ func TestAssignUnassignStatus(t *testing.T) {
 			name: "assigns status to column",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, string, func(*testing.T)) {
 				proj, status := seedProjectWithStatus(t, db)
-				board, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Board", Type: "kanban"})
+				board, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Board", Type: "kanban"})
 				if err != nil {
 					t.Fatalf("seed board: %v", err)
 				}
@@ -299,7 +299,7 @@ func TestAssignUnassignStatus(t *testing.T) {
 			name: "assign same status twice is idempotent",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, string, func(*testing.T)) {
 				proj, status := seedProjectWithStatus(t, db)
-				board, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Board", Type: "kanban"})
+				board, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Board", Type: "kanban"})
 				if err != nil {
 					t.Fatalf("seed board: %v", err)
 				}
@@ -400,7 +400,7 @@ func seedProject(t *testing.T, db *sqlx.DB) string {
 func seedBoard(t *testing.T, db *sqlx.DB) string {
 	t.Helper()
 	proj := seedProject(t, db)
-	board, err := CreateBoard(context.Background(), db, CreateBoardParams{ProjectID: proj, Name: "Board", Type: "kanban"})
+	board, err := Create(context.Background(), db, CreateParams{ProjectID: proj, Name: "Board", Type: "kanban"})
 	if err != nil {
 		t.Fatalf("seed board: %v", err)
 	}

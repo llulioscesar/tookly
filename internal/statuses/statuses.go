@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	ErrStatusNotFound  = errors.New("status not found")
-	ErrDuplicateStatus = errors.New("status name already exists in project")
+	ErrNotFound  = errors.New("status not found")
+	ErrDuplicate = errors.New("status name already exists in project")
 )
 
 var validCategories = map[string]bool{"todo": true, "doing": true, "done": true}
@@ -31,13 +31,13 @@ type Status struct {
 	ArchivedAt *time.Time `db:"archived_at" json:"archived_at,omitempty"`
 }
 
-type CreateStatusParams struct {
+type CreateParams struct {
 	ProjectID string
 	Name      string
 	Category  string
 }
 
-func (params CreateStatusParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
@@ -50,14 +50,14 @@ func (params CreateStatusParams) Validate() error {
 	return nil
 }
 
-type UpdateStatusParams struct {
+type UpdateParams struct {
 	StatusID  string
 	ProjectID string
 	Name      string
 	Category  string
 }
 
-func (params UpdateStatusParams) Validate() error {
+func (params UpdateParams) Validate() error {
 	if params.StatusID == "" {
 		return errors.New("status_id is required")
 	}
@@ -73,7 +73,7 @@ func (params UpdateStatusParams) Validate() error {
 	return nil
 }
 
-func CreateStatus(ctx context.Context, db *sqlx.DB, params CreateStatusParams) (Status, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Status, error) {
 	if db == nil {
 		return Status{}, errors.New("db is required")
 	}
@@ -83,7 +83,7 @@ func CreateStatus(ctx context.Context, db *sqlx.DB, params CreateStatusParams) (
 	return createStatus(ctx, db, params)
 }
 
-func ListStatuses(ctx context.Context, db *sqlx.DB, projectID string) ([]Status, error) {
+func List(ctx context.Context, db *sqlx.DB, projectID string) ([]Status, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -93,7 +93,7 @@ func ListStatuses(ctx context.Context, db *sqlx.DB, projectID string) ([]Status,
 	return listStatuses(ctx, db, projectID)
 }
 
-func UpdateStatus(ctx context.Context, db *sqlx.DB, params UpdateStatusParams) (Status, error) {
+func Update(ctx context.Context, db *sqlx.DB, params UpdateParams) (Status, error) {
 	if db == nil {
 		return Status{}, errors.New("db is required")
 	}
@@ -103,7 +103,7 @@ func UpdateStatus(ctx context.Context, db *sqlx.DB, params UpdateStatusParams) (
 	return updateStatus(ctx, db, params)
 }
 
-func ArchiveStatus(ctx context.Context, db *sqlx.DB, projectID, statusID string) error {
+func Archive(ctx context.Context, db *sqlx.DB, projectID, statusID string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}

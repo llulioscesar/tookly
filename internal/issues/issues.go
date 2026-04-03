@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrIssueNotFound   = errors.New("issue not found")
+	ErrNotFound        = errors.New("issue not found")
 	ErrInvalidPriority = errors.New("priority must be 'low', 'medium', 'high' or 'critical'")
 )
 
@@ -41,7 +41,7 @@ type Issue struct {
 	ArchivedAt     *time.Time `db:"archived_at"     json:"archived_at,omitempty"`
 }
 
-type CreateIssueParams struct {
+type CreateParams struct {
 	ProjectID     string
 	IssueTypeID   string
 	StatusID      string
@@ -54,7 +54,7 @@ type CreateIssueParams struct {
 	DueDate       *time.Time
 }
 
-func (params CreateIssueParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
@@ -80,7 +80,7 @@ func (params CreateIssueParams) Validate() error {
 	return nil
 }
 
-type UpdateIssueParams struct {
+type UpdateParams struct {
 	IssueID     string
 	ProjectID   string
 	Title       string
@@ -90,7 +90,7 @@ type UpdateIssueParams struct {
 	DueDate     *time.Time
 }
 
-func (params UpdateIssueParams) Validate() error {
+func (params UpdateParams) Validate() error {
 	if params.IssueID == "" {
 		return errors.New("issue_id is required")
 	}
@@ -106,13 +106,13 @@ func (params UpdateIssueParams) Validate() error {
 	return nil
 }
 
-type ListIssuesParams struct {
+type ListParams struct {
 	ProjectID  string
 	StatusID   string
 	AssigneeID string
 }
 
-func CreateIssue(ctx context.Context, db *sqlx.DB, params CreateIssueParams) (Issue, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Issue, error) {
 	if db == nil {
 		return Issue{}, errors.New("db is required")
 	}
@@ -125,7 +125,7 @@ func CreateIssue(ctx context.Context, db *sqlx.DB, params CreateIssueParams) (Is
 	return createIssue(ctx, db, params)
 }
 
-func GetIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issue, error) {
+func Get(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issue, error) {
 	if db == nil {
 		return Issue{}, errors.New("db is required")
 	}
@@ -138,7 +138,7 @@ func GetIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issu
 	return getIssue(ctx, db, projectID, issueID)
 }
 
-func ListIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Issue, error) {
+func List(ctx context.Context, db *sqlx.DB, params ListParams) ([]Issue, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -148,7 +148,7 @@ func ListIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Is
 	return listIssues(ctx, db, params)
 }
 
-func UpdateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Issue, error) {
+func Update(ctx context.Context, db *sqlx.DB, params UpdateParams) (Issue, error) {
 	if db == nil {
 		return Issue{}, errors.New("db is required")
 	}
@@ -158,7 +158,7 @@ func UpdateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Is
 	return updateIssue(ctx, db, params)
 }
 
-func ArchiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) error {
+func Archive(ctx context.Context, db *sqlx.DB, projectID, issueID string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
@@ -171,14 +171,14 @@ func ArchiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) e
 	return archiveIssue(ctx, db, projectID, issueID)
 }
 
-type MoveIssueParams struct {
+type MoveParams struct {
 	ProjectID      string
 	IssueID        string
 	TargetStatusID string
 	TargetPosition int
 }
 
-func (params MoveIssueParams) Validate() error {
+func (params MoveParams) Validate() error {
 	if params.ProjectID == "" || params.IssueID == "" {
 		return errors.New("project_id and issue_id are required")
 	}
@@ -188,7 +188,7 @@ func (params MoveIssueParams) Validate() error {
 	return nil
 }
 
-func MoveIssue(ctx context.Context, db *sqlx.DB, params MoveIssueParams) error {
+func Move(ctx context.Context, db *sqlx.DB, params MoveParams) error {
 	if db == nil {
 		return errors.New("db is required")
 	}

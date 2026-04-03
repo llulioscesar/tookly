@@ -18,7 +18,7 @@ import (
 const selectCols = `id, name, slug, created_at, updated_at, archived_at`
 const memberCols = `workspace_id, user_id, role, created_at, updated_at, archived_at`
 
-func createWorkspace(ctx context.Context, db *sqlx.DB, params CreateWorkspaceParams) (Workspace, error) {
+func createWorkspace(ctx context.Context, db *sqlx.DB, params CreateParams) (Workspace, error) {
 	var workspace Workspace
 	if err := pgutil.WithTx(ctx, db, nil, "begin tx", "commit tx", func(tx *sqlx.Tx) error {
 		if err := tx.QueryRowxContext(
@@ -60,7 +60,7 @@ func getWorkspace(ctx context.Context, db *sqlx.DB, id string) (Workspace, error
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Workspace{}, ErrWorkspaceNotFound
+			return Workspace{}, ErrNotFound
 		}
 		return Workspace{}, fmt.Errorf("get workspace: %w", err)
 	}
@@ -79,7 +79,7 @@ func getWorkspaceBySlug(ctx context.Context, db *sqlx.DB, slug string) (Workspac
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Workspace{}, ErrWorkspaceNotFound
+			return Workspace{}, ErrNotFound
 		}
 		return Workspace{}, fmt.Errorf("get workspace by slug: %w", err)
 	}
@@ -103,13 +103,13 @@ func archiveWorkspace(ctx context.Context, db *sqlx.DB, id string) error {
 		return fmt.Errorf("archive workspace rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrWorkspaceNotFound
+		return ErrNotFound
 	}
 	return nil
 }
 
-func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (WorkspaceMember, error) {
-	var member WorkspaceMember
+func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Member, error) {
+	var member Member
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO workspace_members (workspace_id, user_id, role)
 		 VALUES ($1, $2, $3)
@@ -119,7 +119,7 @@ func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Worksp
 		params.WorkspaceID, params.UserID, params.Role,
 	).StructScan(&member)
 	if err != nil {
-		return WorkspaceMember{}, fmt.Errorf("add workspace member: %w", err)
+		return Member{}, fmt.Errorf("add workspace member: %w", err)
 	}
 	return member, nil
 }
@@ -144,8 +144,8 @@ func removeMember(ctx context.Context, db *sqlx.DB, workspaceID, userID string) 
 	return nil
 }
 
-func listMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]WorkspaceMember, error) {
-	members := []WorkspaceMember{}
+func listMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Member, error) {
+	members := []Member{}
 	err := db.SelectContext(ctx, &members,
 		`SELECT `+memberCols+`
 		 FROM workspace_members
@@ -159,8 +159,8 @@ func listMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Worksp
 	return members, nil
 }
 
-func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (WorkspaceMember, error) {
-	var member WorkspaceMember
+func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (Member, error) {
+	var member Member
 	err := db.QueryRowxContext(ctx,
 		`UPDATE workspace_members
 		 SET role = $1
@@ -170,9 +170,9 @@ func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleP
 	).StructScan(&member)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return WorkspaceMember{}, ErrMemberNotFound
+			return Member{}, ErrMemberNotFound
 		}
-		return WorkspaceMember{}, fmt.Errorf("update workspace member role: %w", err)
+		return Member{}, fmt.Errorf("update workspace member role: %w", err)
 	}
 	return member, nil
 }

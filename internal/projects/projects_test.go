@@ -13,57 +13,57 @@ import (
 func TestCreateProjectParams_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
-		params  CreateProjectParams
+		params  CreateParams
 		wantErr bool
 	}{
 		{
 			name:    "valid",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG"},
 			wantErr: false,
 		},
 		{
 			name:    "key exactly 2 chars",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "AB"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "AB"},
 			wantErr: false,
 		},
 		{
 			name:    "key exactly 10 chars",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJ"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJ"},
 			wantErr: false,
 		},
 		{
 			name:    "missing workspace_id",
-			params:  CreateProjectParams{WorkspaceID: "", Name: "Engineering", Key: "ENG"},
+			params:  CreateParams{WorkspaceID: "", Name: "Engineering", Key: "ENG"},
 			wantErr: true,
 		},
 		{
 			name:    "missing name",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "", Key: "ENG"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "", Key: "ENG"},
 			wantErr: true,
 		},
 		{
 			name:    "key too short",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "E"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "E"},
 			wantErr: true,
 		},
 		{
 			name:    "key too long",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJK"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ABCDEFGHIJK"},
 			wantErr: true,
 		},
 		{
 			name:    "key lowercase",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "eng"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "eng"},
 			wantErr: true,
 		},
 		{
 			name:    "key with digits",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG1"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "ENG1"},
 			wantErr: true,
 		},
 		{
 			name:    "key with spaces",
-			params:  CreateProjectParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "EN G"},
+			params:  CreateParams{WorkspaceID: "ws-1", Name: "Engineering", Key: "EN G"},
 			wantErr: true,
 		},
 	}
@@ -79,7 +79,7 @@ func TestCreateProjectParams_Validate(t *testing.T) {
 }
 
 func TestCreateProject_NilDB(t *testing.T) {
-	_, err := CreateProject(context.Background(), nil, CreateProjectParams{
+	_, err := Create(context.Background(), nil, CreateParams{
 		WorkspaceID: "ws-1",
 		Name:        "Engineering",
 		Key:         "ENG",
@@ -90,28 +90,28 @@ func TestCreateProject_NilDB(t *testing.T) {
 }
 
 func TestGetProject_NilDB(t *testing.T) {
-	_, err := GetProject(context.Background(), nil, "some-id")
+	_, err := Get(context.Background(), nil, "some-id")
 	if err == nil || err.Error() != "db is required" {
 		t.Fatalf("GetProject() error = %v, want %q", err, "db is required")
 	}
 }
 
 func TestGetProject_EmptyID(t *testing.T) {
-	_, err := GetProject(context.Background(), nil, "")
+	_, err := Get(context.Background(), nil, "")
 	if err == nil {
 		t.Fatal("GetProject() with empty id should return error")
 	}
 }
 
 func TestListProjects_NilDB(t *testing.T) {
-	_, err := ListProjects(context.Background(), nil, "ws-1")
+	_, err := List(context.Background(), nil, "ws-1")
 	if err == nil || err.Error() != "db is required" {
 		t.Fatalf("ListProjects() error = %v, want %q", err, "db is required")
 	}
 }
 
 func TestArchiveProject_NilDB(t *testing.T) {
-	err := ArchiveProject(context.Background(), nil, "some-id")
+	err := Archive(context.Background(), nil, "some-id")
 	if err == nil || err.Error() != "db is required" {
 		t.Fatalf("ArchiveProject() error = %v, want %q", err, "db is required")
 	}

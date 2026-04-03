@@ -3,7 +3,7 @@
 // Use of this software is governed by the Business Source License 1.1
 // included in the LICENSE file at the root of this repository.
 
-package users
+package auth
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 const MinPasswordLength = 8
 
 var (
-	ErrUserNotFound       = errors.New("user not found")
+	ErrNotFound           = errors.New("user not found")
 	ErrDuplicateEmail     = errors.New("email already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrPasswordTooShort   = fmt.Errorf("password must be at least %d characters", MinPasswordLength)
@@ -77,13 +77,13 @@ func CreateOIDCUserTx(ctx context.Context, tx *sqlx.Tx, params CreateOIDCUserPar
 	return createOIDCUserTx(ctx, tx, params)
 }
 
-type CreateUserParams struct {
+type CreateParams struct {
 	Email    string
 	Name     string
 	Password string
 }
 
-func (params CreateUserParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.Name == "" {
 		return errors.New("name is required")
 	}
@@ -99,7 +99,7 @@ func (params CreateUserParams) Validate() error {
 	return nil
 }
 
-func CreateUser(ctx context.Context, db *sqlx.DB, params CreateUserParams) (User, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (User, error) {
 	if db == nil {
 		return User{}, errors.New("db is required")
 	}
@@ -110,7 +110,7 @@ func CreateUser(ctx context.Context, db *sqlx.DB, params CreateUserParams) (User
 }
 
 // CreateInstanceAdminTx creates a user with is_instance_admin=true within an existing transaction.
-func CreateInstanceAdminTx(ctx context.Context, tx *sqlx.Tx, params CreateUserParams) (User, error) {
+func CreateInstanceAdminTx(ctx context.Context, tx *sqlx.Tx, params CreateParams) (User, error) {
 	if tx == nil {
 		return User{}, errors.New("tx is required")
 	}
@@ -120,7 +120,7 @@ func CreateInstanceAdminTx(ctx context.Context, tx *sqlx.Tx, params CreateUserPa
 	return createInstanceAdminTx(ctx, tx, params)
 }
 
-func GetUser(ctx context.Context, db *sqlx.DB, id string) (User, error) {
+func Get(ctx context.Context, db *sqlx.DB, id string) (User, error) {
 	if db == nil {
 		return User{}, errors.New("db is required")
 	}
@@ -130,7 +130,17 @@ func GetUser(ctx context.Context, db *sqlx.DB, id string) (User, error) {
 	return getUser(ctx, db, id)
 }
 
-func GetUserByEmail(ctx context.Context, db *sqlx.DB, email string) (User, error) {
+func GetTx(ctx context.Context, tx *sqlx.Tx, id string) (User, error) {
+	if tx == nil {
+		return User{}, errors.New("tx is required")
+	}
+	if id == "" {
+		return User{}, errors.New("id is required")
+	}
+	return getUserTx(ctx, tx, id)
+}
+
+func GetByEmail(ctx context.Context, db *sqlx.DB, email string) (User, error) {
 	if db == nil {
 		return User{}, errors.New("db is required")
 	}
@@ -138,6 +148,16 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, email string) (User, error
 		return User{}, errors.New("email is required")
 	}
 	return getUserByEmail(ctx, db, email)
+}
+
+func GetByEmailTx(ctx context.Context, tx *sqlx.Tx, email string) (User, error) {
+	if tx == nil {
+		return User{}, errors.New("tx is required")
+	}
+	if email == "" {
+		return User{}, errors.New("email is required")
+	}
+	return getUserByEmailTx(ctx, tx, email)
 }
 
 func ChangePassword(ctx context.Context, db *sqlx.DB, userID, currentPassword, newPassword string) error {
@@ -210,7 +230,7 @@ func SetPasswordTx(ctx context.Context, tx *sqlx.Tx, userID, newPassword string)
 	return updatePasswordTx(ctx, tx, userID, newHash)
 }
 
-func ArchiveUser(ctx context.Context, db *sqlx.DB, id string) error {
+func Archive(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
@@ -220,7 +240,7 @@ func ArchiveUser(ctx context.Context, db *sqlx.DB, id string) error {
 	return archiveUser(ctx, db, id)
 }
 
-func AuthenticateUser(ctx context.Context, db *sqlx.DB, email, password string) (User, error) {
+func Authenticate(ctx context.Context, db *sqlx.DB, email, password string) (User, error) {
 	if db == nil {
 		return User{}, errors.New("db is required")
 	}

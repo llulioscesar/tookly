@@ -150,6 +150,21 @@ func getIdentityByProviderSubject(ctx context.Context, db *sqlx.DB, providerID, 
 	return ident, nil
 }
 
+func getIdentityByProviderSubjectTx(ctx context.Context, tx *sqlx.Tx, providerID, subject string) (Identity, error) {
+	var ident Identity
+	err := tx.GetContext(ctx, &ident,
+		`SELECT id, user_id, provider_id, subject, email, created_at
+		 FROM user_identities WHERE provider_id = $1 AND subject = $2`,
+		providerID, subject)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Identity{}, ErrIdentityNotFound
+		}
+		return Identity{}, fmt.Errorf("get identity: %w", err)
+	}
+	return ident, nil
+}
+
 func createIdentity(ctx context.Context, tx *sqlx.Tx, userID, providerID, subject, email string) (Identity, error) {
 	var ident Identity
 	err := tx.QueryRowxContext(ctx,

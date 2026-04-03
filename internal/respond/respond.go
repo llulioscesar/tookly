@@ -7,6 +7,7 @@ package respond
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 )
 
@@ -20,7 +21,9 @@ type envelope struct {
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(envelope{Status: status, Data: v})
+	if err := json.NewEncoder(w).Encode(envelope{Status: status, Data: v}); err != nil {
+		slog.Error("respond.JSON: encode failed", "error", err)
+	}
 }
 
 func Error(w http.ResponseWriter, status int, msg string) {

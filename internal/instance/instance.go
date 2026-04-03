@@ -10,12 +10,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/auth"
 	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/sessions"
-	"github.com/start-codex/tookly/internal/users"
 )
 
 var (
@@ -30,7 +31,7 @@ type BootstrapParams struct {
 }
 
 func (p BootstrapParams) Validate() error {
-	return users.CreateUserParams{
+	return auth.CreateParams{
 		Email:    p.Email,
 		Name:     p.Name,
 		Password: p.Password,
@@ -38,7 +39,7 @@ func (p BootstrapParams) Validate() error {
 }
 
 type BootstrapResult struct {
-	User     users.User
+	User     auth.User
 	RawToken string
 }
 
@@ -71,7 +72,7 @@ func Bootstrap(ctx context.Context, db *sqlx.DB, params BootstrapParams) (Bootst
 	}
 
 	// Create the instance admin user
-	user, err := users.CreateInstanceAdminTx(ctx, tx, users.CreateUserParams{
+	user, err := auth.CreateInstanceAdminTx(ctx, tx, auth.CreateParams{
 		Email:    params.Email,
 		Name:     params.Name,
 		Password: params.Password,
@@ -160,6 +161,23 @@ func LoadSMTPConfig(ctx context.Context, db *sqlx.DB) (*email.SMTPConfig, error)
 		Username: username,
 		Password: password,
 	}, nil
+}
+
+// ResolveBaseURL returns the effective base URL for building absolute links.
+// Priority: configured base_url → Origin header → X-Forwarded-Proto + Host → http + Host.
+func ResolveBaseURL(ctx context.Context, db *sqlx.DB, r *http.Request) string {
+	baseURL, _ := GetConfig(ctx, db, "base_url")
+	if baseURL != "" {
+		return baseURL
+	}
+	if origin := r.Header.Get("Origin"); origin != "" {
+		return origin
+	}
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if proto == "" {
+		proto = "http"
+	}
+	return fmt.Sprintf("%s://%s", proto, r.Host)
 }
 
 func SaveSMTPConfig(ctx context.Context, db *sqlx.DB, config email.SMTPConfig) error {

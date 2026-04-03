@@ -9,17 +9,15 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/auth"
 	"github.com/start-codex/tookly/internal/boards"
-	"github.com/start-codex/tookly/internal/emailverification"
 	"github.com/start-codex/tookly/internal/instance"
-	"github.com/start-codex/tookly/internal/oidc"
 	"github.com/start-codex/tookly/internal/invitations"
 	"github.com/start-codex/tookly/internal/issues"
-	"github.com/start-codex/tookly/internal/passwordreset"
 	"github.com/start-codex/tookly/internal/issuetypes"
+	"github.com/start-codex/tookly/internal/oidc"
 	"github.com/start-codex/tookly/internal/projects"
 	"github.com/start-codex/tookly/internal/statuses"
-	"github.com/start-codex/tookly/internal/users"
 	"github.com/start-codex/tookly/internal/workspaces"
 )
 
@@ -27,9 +25,7 @@ import (
 func newAPIHandler(db *sqlx.DB) http.Handler {
 	api := http.NewServeMux()
 	instance.RegisterRoutes(api, db)
-	users.RegisterRoutes(api, db)
-	passwordreset.RegisterRoutes(api, db)
-	emailverification.RegisterRoutes(api, db)
+	auth.RegisterRoutes(api, db)
 	oidc.RegisterRoutes(api, db)
 	workspaces.RegisterRoutes(api, db)
 	invitations.RegisterRoutes(api, db)

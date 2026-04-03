@@ -63,7 +63,7 @@ func resolveTemplate(template, locale string) []templateStatus {
 	return templateDefs["en"][template]
 }
 
-func createProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams) (Project, error) {
+func createProject(ctx context.Context, db *sqlx.DB, params CreateParams) (Project, error) {
 	if params.Template == "" {
 		var project Project
 		err := db.QueryRowxContext(
@@ -75,7 +75,7 @@ func createProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams)
 		).StructScan(&project)
 		if err != nil {
 			if pgutil.IsUniqueViolation(err) {
-				return Project{}, ErrDuplicateProjectKey
+				return Project{}, ErrDuplicateKey
 			}
 			return Project{}, fmt.Errorf("insert project: %w", err)
 		}
@@ -92,7 +92,7 @@ func createProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams)
 			params.WorkspaceID, params.Name, params.Key, params.Description,
 		).StructScan(&project); err != nil {
 			if pgutil.IsUniqueViolation(err) {
-				return ErrDuplicateProjectKey
+				return ErrDuplicateKey
 			}
 			return fmt.Errorf("insert project: %w", err)
 		}
@@ -131,7 +131,7 @@ func getProject(ctx context.Context, db *sqlx.DB, id string) (Project, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Project{}, ErrProjectNotFound
+			return Project{}, ErrNotFound
 		}
 		return Project{}, fmt.Errorf("get project: %w", err)
 	}
@@ -173,13 +173,13 @@ func archiveProject(ctx context.Context, db *sqlx.DB, id string) error {
 		return fmt.Errorf("archive project rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrProjectNotFound
+		return ErrNotFound
 	}
 	return nil
 }
 
-func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (ProjectMember, error) {
-	var member ProjectMember
+func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Member, error) {
+	var member Member
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO project_members (project_id, user_id, role)
 		 VALUES ($1, $2, $3)
@@ -189,7 +189,7 @@ func addMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Projec
 		params.ProjectID, params.UserID, params.Role,
 	).StructScan(&member)
 	if err != nil {
-		return ProjectMember{}, fmt.Errorf("add project member: %w", err)
+		return Member{}, fmt.Errorf("add project member: %w", err)
 	}
 	return member, nil
 }
@@ -214,8 +214,8 @@ func removeMember(ctx context.Context, db *sqlx.DB, projectID, userID string) er
 	return nil
 }
 
-func listMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]ProjectMember, error) {
-	members := []ProjectMember{}
+func listMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]Member, error) {
+	members := []Member{}
 	err := db.SelectContext(ctx, &members,
 		`SELECT `+memberCols+`
 		 FROM project_members
@@ -229,8 +229,8 @@ func listMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]ProjectM
 	return members, nil
 }
 
-func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (ProjectMember, error) {
-	var member ProjectMember
+func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (Member, error) {
+	var member Member
 	err := db.QueryRowxContext(ctx,
 		`UPDATE project_members
 		 SET role = $1
@@ -240,9 +240,9 @@ func updateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleP
 	).StructScan(&member)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ProjectMember{}, ErrMemberNotFound
+			return Member{}, ErrMemberNotFound
 		}
-		return ProjectMember{}, fmt.Errorf("update project member role: %w", err)
+		return Member{}, fmt.Errorf("update project member role: %w", err)
 	}
 	return member, nil
 }

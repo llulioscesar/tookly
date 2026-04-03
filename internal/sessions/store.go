@@ -66,37 +66,33 @@ func createSessionTx(ctx context.Context, tx *sqlx.Tx, userID string, ttl time.D
 func validateSession(ctx context.Context, db *sqlx.DB, rawToken string) (Session, error) {
 	hashedToken := HashToken(rawToken)
 
-	var session Session
-	err := db.GetContext(ctx, &session,
-		`SELECT `+sessionCols+`
+	var row struct {
+		Session
+		UserArchived bool `db:"user_archived"`
+	}
+	err := db.GetContext(ctx, &row,
+		`SELECT `+sessionCols+`, (u.archived_at IS NOT NULL) AS user_archived
 		 FROM sessions s
-		 JOIN app_users u ON u.id = s.user_id
-		 WHERE s.id = $1
-		   AND u.archived_at IS NULL`,
+		 LEFT JOIN app_users u ON u.id = s.user_id
+		 WHERE s.id = $1`,
 		hashedToken,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// Distinguish "session missing" from "user archived":
-			// check if the session row exists at all.
-			var exists bool
-			if err2 := db.GetContext(ctx, &exists,
-				`SELECT EXISTS(SELECT 1 FROM sessions WHERE id = $1)`, hashedToken); err2 != nil {
-				return Session{}, fmt.Errorf("check session existence: %w", err2)
-			}
-			if exists {
-				return Session{}, ErrUserArchived
-			}
 			return Session{}, ErrSessionNotFound
 		}
 		return Session{}, fmt.Errorf("get session: %w", err)
 	}
 
-	if time.Now().After(session.ExpiresAt) {
+	if row.UserArchived {
+		return Session{}, ErrUserArchived
+	}
+
+	if time.Now().After(row.Session.ExpiresAt) {
 		return Session{}, ErrSessionExpired
 	}
 
-	return session, nil
+	return row.Session, nil
 }
 
 func deleteByUserID(ctx context.Context, db *sqlx.DB, userID, exceptTokenHash string) error {

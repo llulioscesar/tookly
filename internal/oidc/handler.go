@@ -16,10 +16,10 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/auth"
 	"github.com/start-codex/tookly/internal/authz"
 	"github.com/start-codex/tookly/internal/respond"
 	"github.com/start-codex/tookly/internal/sessions"
-	"github.com/start-codex/tookly/internal/users"
 	"golang.org/x/oauth2"
 )
 
@@ -227,75 +227,77 @@ var (
 	errNoAccount       = errors.New("no account for this email")
 )
 
-func resolveAccount(ctx context.Context, db *sqlx.DB, prov Provider, claims *IDTokenClaims) (users.User, error) {
+func resolveAccount(ctx context.Context, db *sqlx.DB, prov Provider, claims *IDTokenClaims) (auth.User, error) {
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
-		return users.User{}, fmt.Errorf("begin tx: %w", err)
+		return auth.User{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback()
 
 	// 1. Check existing identity
-	ident, err := getIdentityByProviderSubject(ctx, db, prov.ID, claims.Subject)
+	ident, err := getIdentityByProviderSubjectTx(ctx, tx, prov.ID, claims.Subject)
 	if err == nil {
 		// Identity found — load user
-		user, err := users.GetUser(ctx, db, ident.UserID)
+		user, err := auth.GetTx(ctx, tx, ident.UserID)
 		if err != nil {
-			return users.User{}, fmt.Errorf("get user: %w", err)
+			return auth.User{}, fmt.Errorf("get user: %w", err)
 		}
 		if user.ArchivedAt != nil {
-			return users.User{}, errAccountArchived
+			return auth.User{}, errAccountArchived
 		}
-		_ = tx.Commit()
+		if err := tx.Commit(); err != nil {
+			return auth.User{}, fmt.Errorf("commit: %w", err)
+		}
 		return user, nil
 	}
 	if !errors.Is(err, ErrIdentityNotFound) {
-		return users.User{}, fmt.Errorf("lookup identity: %w", err)
+		return auth.User{}, fmt.Errorf("lookup identity: %w", err)
 	}
 
 	// 2. Identity not found — try to link by email (exact match)
-	user, err := users.GetUserByEmail(ctx, db, claims.Email)
+	user, err := auth.GetByEmailTx(ctx, tx, claims.Email)
 	if err == nil {
 		// User exists — create identity link
 		if user.ArchivedAt != nil {
-			return users.User{}, errAccountArchived
+			return auth.User{}, errAccountArchived
 		}
 		if _, err := createIdentity(ctx, tx, user.ID, prov.ID, claims.Subject, claims.Email); err != nil {
-			return users.User{}, fmt.Errorf("create identity link: %w", err)
+			return auth.User{}, fmt.Errorf("create identity link: %w", err)
 		}
 		// Mark email as verified if not already
 		if err := setEmailVerifiedTx(ctx, tx, user.ID); err != nil {
-			return users.User{}, fmt.Errorf("set verified: %w", err)
+			return auth.User{}, fmt.Errorf("set verified: %w", err)
 		}
 		if err := tx.Commit(); err != nil {
-			return users.User{}, fmt.Errorf("commit: %w", err)
+			return auth.User{}, fmt.Errorf("commit: %w", err)
 		}
 		return user, nil
 	}
-	if !errors.Is(err, users.ErrUserNotFound) {
-		return users.User{}, fmt.Errorf("lookup user by email: %w", err)
+	if !errors.Is(err, auth.ErrNotFound) {
+		return auth.User{}, fmt.Errorf("lookup user by email: %w", err)
 	}
 
 	// 3. No user found — JIT provisioning if allowed
 	if !prov.AutoRegister {
-		return users.User{}, errNoAccount
+		return auth.User{}, errNoAccount
 	}
 
 	name := claims.Name
 	if name == "" {
 		name = claims.Email
 	}
-	newUser, err := users.CreateOIDCUserTx(ctx, tx, users.CreateOIDCUserParams{
+	newUser, err := auth.CreateOIDCUserTx(ctx, tx, auth.CreateOIDCUserParams{
 		Email: claims.Email,
 		Name:  name,
 	})
 	if err != nil {
-		return users.User{}, fmt.Errorf("create oidc user: %w", err)
+		return auth.User{}, fmt.Errorf("create oidc user: %w", err)
 	}
 	if _, err := createIdentity(ctx, tx, newUser.ID, prov.ID, claims.Subject, claims.Email); err != nil {
-		return users.User{}, fmt.Errorf("create identity: %w", err)
+		return auth.User{}, fmt.Errorf("create identity: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
-		return users.User{}, fmt.Errorf("commit: %w", err)
+		return auth.User{}, fmt.Errorf("commit: %w", err)
 	}
 	return newUser, nil
 }

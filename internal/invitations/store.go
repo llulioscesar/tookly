@@ -17,7 +17,7 @@ import (
 
 const invCols = `id, workspace_id, email, role, invited_by, token_hash, status, expires_at, accepted_at, created_at`
 
-func createInvitation(ctx context.Context, db *sqlx.DB, params CreateInvitationParams, tokenHash string, expiresAt time.Time) (Invitation, error) {
+func createInvitation(ctx context.Context, db *sqlx.DB, params CreateParams, tokenHash string, expiresAt time.Time) (Invitation, error) {
 	var inv Invitation
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO invitations (workspace_id, email, role, invited_by, token_hash, expires_at)
@@ -27,7 +27,7 @@ func createInvitation(ctx context.Context, db *sqlx.DB, params CreateInvitationP
 	).StructScan(&inv)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return Invitation{}, ErrDuplicateInvitation
+			return Invitation{}, ErrDuplicate
 		}
 		return Invitation{}, fmt.Errorf("insert invitation: %w", err)
 	}
@@ -42,7 +42,7 @@ func getInvitationByToken(ctx context.Context, db *sqlx.DB, tokenHash string) (I
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Invitation{}, ErrInvitationNotFound
+			return Invitation{}, ErrNotFound
 		}
 		return Invitation{}, fmt.Errorf("get invitation by token: %w", err)
 	}
@@ -57,7 +57,7 @@ func getInvitationByID(ctx context.Context, db *sqlx.DB, id string) (Invitation,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Invitation{}, ErrInvitationNotFound
+			return Invitation{}, ErrNotFound
 		}
 		return Invitation{}, fmt.Errorf("get invitation by id: %w", err)
 	}
@@ -88,7 +88,7 @@ func revokeInvitation(ctx context.Context, db *sqlx.DB, id string) error {
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		return ErrInvitationNotFound
+		return ErrNotFound
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func resendInvitation(ctx context.Context, db *sqlx.DB, id, newTokenHash string,
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		return ErrInvitationNotFound
+		return ErrNotFound
 	}
 	return nil
 }

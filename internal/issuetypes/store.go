@@ -15,8 +15,8 @@ import (
 
 const issueTypeCols = `id, project_id, name, icon, level, created_at, updated_at, archived_at`
 
-func createIssueType(ctx context.Context, db *sqlx.DB, params CreateIssueTypeParams) (IssueType, error) {
-	var issueType IssueType
+func createIssueType(ctx context.Context, db *sqlx.DB, params CreateParams) (Type, error) {
+	var issueType Type
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO issue_types (project_id, name, icon, level)
 		 VALUES ($1, $2, $3, $4)
@@ -25,15 +25,15 @@ func createIssueType(ctx context.Context, db *sqlx.DB, params CreateIssueTypePar
 	).StructScan(&issueType)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return IssueType{}, ErrDuplicateIssueType
+			return Type{}, ErrDuplicate
 		}
-		return IssueType{}, fmt.Errorf("create issue type: %w", err)
+		return Type{}, fmt.Errorf("create issue type: %w", err)
 	}
 	return issueType, nil
 }
 
-func listIssueTypes(ctx context.Context, db *sqlx.DB, projectID string) ([]IssueType, error) {
-	issueTypes := []IssueType{}
+func listIssueTypes(ctx context.Context, db *sqlx.DB, projectID string) ([]Type, error) {
+	issueTypes := []Type{}
 	if err := db.SelectContext(ctx, &issueTypes,
 		`SELECT `+issueTypeCols+`
 		 FROM issue_types
@@ -64,7 +64,7 @@ func archiveIssueType(ctx context.Context, db *sqlx.DB, projectID, issueTypeID s
 		return fmt.Errorf("archive issue type rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrIssueTypeNotFound
+		return ErrNotFound
 	}
 	return nil
 }

@@ -18,7 +18,7 @@ import (
 const boardCols = `id, project_id, name, type, filter_query, created_at, updated_at, archived_at`
 const columnCols = `id, board_id, name, position, created_at, updated_at, archived_at`
 
-func createBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Board, error) {
+func createBoard(ctx context.Context, db *sqlx.DB, params CreateParams) (Board, error) {
 	var board Board
 	err := db.QueryRowxContext(
 		ctx,
@@ -32,7 +32,7 @@ func createBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Bo
 	).StructScan(&board)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return Board{}, ErrDuplicateBoardName
+			return Board{}, ErrDuplicateName
 		}
 		return Board{}, fmt.Errorf("insert board: %w", err)
 	}
@@ -51,7 +51,7 @@ func getBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Board{}, ErrBoardNotFound
+			return Board{}, ErrNotFound
 		}
 		return Board{}, fmt.Errorf("get board: %w", err)
 	}
@@ -93,13 +93,13 @@ func archiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
 		return fmt.Errorf("archive board rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrBoardNotFound
+		return ErrNotFound
 	}
 	return nil
 }
 
-func addColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (BoardColumn, error) {
-	var column BoardColumn
+func addColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (Column, error) {
+	var column Column
 	err := db.QueryRowxContext(
 		ctx,
 		`INSERT INTO board_columns (board_id, name, position)
@@ -115,15 +115,15 @@ func addColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (BoardC
 	).StructScan(&column)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return BoardColumn{}, ErrDuplicateColumnName
+			return Column{}, ErrDuplicateColumnName
 		}
-		return BoardColumn{}, fmt.Errorf("insert board column: %w", err)
+		return Column{}, fmt.Errorf("insert board column: %w", err)
 	}
 	return column, nil
 }
 
-func listColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]BoardColumn, error) {
-	columns := []BoardColumn{}
+func listColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]Column, error) {
+	columns := []Column{}
 	err := db.SelectContext(
 		ctx,
 		&columns,

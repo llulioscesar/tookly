@@ -12,11 +12,11 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/auth"
 	"github.com/start-codex/tookly/internal/authz"
 	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/instance"
 	"github.com/start-codex/tookly/internal/respond"
-	"github.com/start-codex/tookly/internal/users"
 	"github.com/start-codex/tookly/internal/workspaces"
 )
 
@@ -37,15 +37,15 @@ func fail(w http.ResponseWriter, err error) {
 		respond.Error(w, http.StatusForbidden, "forbidden")
 	case errors.Is(err, authz.ErrWorkspaceNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrInvitationNotFound):
+	case errors.Is(err, ErrNotFound):
 		respond.Error(w, http.StatusNotFound, "invitation not found")
-	case errors.Is(err, ErrDuplicateInvitation):
+	case errors.Is(err, ErrDuplicate):
 		respond.Error(w, http.StatusConflict, "pending invitation already exists for this email")
 	case errors.Is(err, ErrAlreadyMember):
 		respond.Error(w, http.StatusConflict, "user is already a workspace member")
-	case errors.Is(err, ErrInvitationExpired), errors.Is(err, ErrInvitationRevoked), errors.Is(err, ErrInvitationUsed):
+	case errors.Is(err, ErrExpired), errors.Is(err, ErrRevoked), errors.Is(err, ErrUsed):
 		respond.Error(w, http.StatusBadRequest, "invalid_or_expired_invitation")
-	case errors.Is(err, users.ErrDuplicateEmail):
+	case errors.Is(err, auth.ErrDuplicateEmail):
 		respond.Error(w, http.StatusConflict, "email already exists")
 	default:
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
@@ -70,7 +70,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		params := CreateInvitationParams{
+		params := CreateParams{
 			WorkspaceID: wsID,
 			Email:       body.Email,
 			Role:        body.Role,
@@ -81,7 +81,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		rawToken, inv, err := CreateInvitation(r.Context(), db, params)
+		rawToken, inv, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -113,7 +113,7 @@ func handleListPending(db *sqlx.DB) http.HandlerFunc {
 func handleRevoke(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		invID := r.PathValue("invitationID")
-		inv, err := GetInvitationByID(r.Context(), db, invID)
+		inv, err := GetByID(r.Context(), db, invID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -133,7 +133,7 @@ func handleRevoke(db *sqlx.DB) http.HandlerFunc {
 func handleResend(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		invID := r.PathValue("invitationID")
-		inv, err := GetInvitationByID(r.Context(), db, invID)
+		inv, err := GetByID(r.Context(), db, invID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -164,14 +164,14 @@ func handleGetAccept(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "token is required")
 			return
 		}
-		inv, err := GetInvitation(r.Context(), db, token)
+		inv, err := Get(r.Context(), db, token)
 		if err != nil {
 			fail(w, err)
 			return
 		}
 		// Get workspace name and inviter name for display
-		ws, _ := workspaces.GetWorkspace(r.Context(), db, inv.WorkspaceID)
-		inviter, _ := users.GetUser(r.Context(), db, inv.InvitedBy)
+		ws, _ := workspaces.Get(r.Context(), db, inv.WorkspaceID)
+		inviter, _ := auth.Get(r.Context(), db, inv.InvitedBy)
 		wsName := ""
 		if ws.ID != "" {
 			wsName = ws.Name
@@ -207,7 +207,7 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 		}
 
 		// Look up invitation before accept (token becomes unusable after)
-		inv, invErr := GetInvitation(r.Context(), db, body.Token)
+		inv, invErr := Get(r.Context(), db, body.Token)
 		if invErr != nil {
 			fail(w, invErr)
 			return
@@ -225,7 +225,7 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 				respond.Error(w, http.StatusBadRequest, "email must match the invitation")
 				return
 			}
-			newUser, err := users.CreateUser(r.Context(), db, users.CreateUserParams{
+			newUser, err := auth.Create(r.Context(), db, auth.CreateParams{
 				Email:    body.Email,
 				Name:     body.Name,
 				Password: body.Password,
@@ -237,18 +237,18 @@ func handleAccept(db *sqlx.DB) http.HandlerFunc {
 			userID = newUser.ID
 
 			// Send verification email if required
-			users.TrySendVerificationEmail(r, db, newUser.ID, newUser.Email)
+			auth.TrySendVerificationEmail(r, db, newUser.ID, newUser.Email)
 		} else {
 			respond.Error(w, http.StatusBadRequest, "must be authenticated or provide email, name, and password")
 			return
 		}
 
-		if err := AcceptInvitation(r.Context(), db, body.Token, userID); err != nil {
+		if err := Accept(r.Context(), db, body.Token, userID); err != nil {
 			fail(w, err)
 			return
 		}
 
-		ws, _ := workspaces.GetWorkspace(r.Context(), db, inv.WorkspaceID)
+		ws, _ := workspaces.Get(r.Context(), db, inv.WorkspaceID)
 
 		respond.JSON(w, http.StatusOK, map[string]string{
 			"status":         "accepted",
@@ -262,8 +262,8 @@ func sendInvitationEmail(r *http.Request, db *sqlx.DB, rawToken string, inv Invi
 	ctx := r.Context()
 
 	// Get workspace name and inviter name
-	ws, _ := workspaces.GetWorkspace(ctx, db, inv.WorkspaceID)
-	inviter, _ := users.GetUser(ctx, db, inviterUserID)
+	ws, _ := workspaces.Get(ctx, db, inv.WorkspaceID)
+	inviter, _ := auth.Get(ctx, db, inviterUserID)
 
 	wsName := inv.WorkspaceID
 	if ws.ID != "" {
@@ -275,17 +275,7 @@ func sendInvitationEmail(r *http.Request, db *sqlx.DB, rawToken string, inv Invi
 	}
 
 	// Build accept URL
-	baseURL, _ := instance.GetConfig(ctx, db, "base_url")
-	if baseURL == "" {
-		baseURL = r.Header.Get("Origin")
-	}
-	if baseURL == "" {
-		proto := r.Header.Get("X-Forwarded-Proto")
-		if proto == "" {
-			proto = "http"
-		}
-		baseURL = fmt.Sprintf("%s://%s", proto, r.Host)
-	}
+	baseURL := instance.ResolveBaseURL(ctx, db, r)
 	acceptURL := fmt.Sprintf("%s/invitations/accept?token=%s", baseURL, rawToken)
 
 	body, err := email.RenderTemplate("invitation", struct {

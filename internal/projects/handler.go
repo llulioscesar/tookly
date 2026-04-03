@@ -34,9 +34,9 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, authz.ErrWorkspaceNotFound),
 		errors.Is(err, authz.ErrProjectNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrProjectNotFound), errors.Is(err, ErrMemberNotFound):
+	case errors.Is(err, ErrNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrDuplicateProjectKey):
+	case errors.Is(err, ErrDuplicateKey):
 		respond.Error(w, http.StatusConflict, err.Error())
 	default:
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
@@ -61,7 +61,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := CreateProjectParams{
+		params := CreateParams{
 			WorkspaceID: r.PathValue("workspaceID"),
 			Name:        body.Name,
 			Key:         body.Key,
@@ -73,7 +73,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		project, err := CreateProject(r.Context(), db, params)
+		project, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -89,7 +89,7 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		list, err := ListProjects(r.Context(), db, wsID)
+		list, err := List(r.Context(), db, wsID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -105,7 +105,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		project, err := GetProject(r.Context(), db, projID)
+		project, err := Get(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -126,7 +126,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		if err := ArchiveProject(r.Context(), db, projID); err != nil {
+		if err := Archive(r.Context(), db, projID); err != nil {
 			fail(w, err)
 			return
 		}

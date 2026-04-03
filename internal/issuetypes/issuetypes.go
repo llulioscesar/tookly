@@ -14,11 +14,11 @@ import (
 )
 
 var (
-	ErrIssueTypeNotFound  = errors.New("issue type not found")
-	ErrDuplicateIssueType = errors.New("issue type name already exists in project")
+	ErrNotFound  = errors.New("issue type not found")
+	ErrDuplicate = errors.New("issue type name already exists in project")
 )
 
-type IssueType struct {
+type Type struct {
 	ID         string     `db:"id"          json:"id"`
 	ProjectID  string     `db:"project_id"  json:"project_id"`
 	Name       string     `db:"name"        json:"name"`
@@ -29,14 +29,14 @@ type IssueType struct {
 	ArchivedAt *time.Time `db:"archived_at" json:"archived_at,omitempty"`
 }
 
-type CreateIssueTypeParams struct {
+type CreateParams struct {
 	ProjectID string
 	Name      string
 	Icon      string
 	Level     int
 }
 
-func (params CreateIssueTypeParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
@@ -49,17 +49,17 @@ func (params CreateIssueTypeParams) Validate() error {
 	return nil
 }
 
-func CreateIssueType(ctx context.Context, db *sqlx.DB, params CreateIssueTypeParams) (IssueType, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Type, error) {
 	if db == nil {
-		return IssueType{}, errors.New("db is required")
+		return Type{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return IssueType{}, err
+		return Type{}, err
 	}
 	return createIssueType(ctx, db, params)
 }
 
-func ListIssueTypes(ctx context.Context, db *sqlx.DB, projectID string) ([]IssueType, error) {
+func List(ctx context.Context, db *sqlx.DB, projectID string) ([]Type, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -69,7 +69,7 @@ func ListIssueTypes(ctx context.Context, db *sqlx.DB, projectID string) ([]Issue
 	return listIssueTypes(ctx, db, projectID)
 }
 
-func ArchiveIssueType(ctx context.Context, db *sqlx.DB, projectID, issueTypeID string) error {
+func Archive(ctx context.Context, db *sqlx.DB, projectID, issueTypeID string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}

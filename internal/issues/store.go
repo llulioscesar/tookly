@@ -21,7 +21,7 @@ const issueCols = `id, project_id, number, issue_type_id, status_id, parent_issu
 	title, description, priority, assignee_id, reporter_id, due_date,
 	status_position, created_at, updated_at, archived_at`
 
-func createIssue(ctx context.Context, db *sqlx.DB, params CreateIssueParams) (Issue, error) {
+func createIssue(ctx context.Context, db *sqlx.DB, params CreateParams) (Issue, error) {
 	var issue Issue
 	if err := pgutil.WithTx(ctx, db, nil, "begin tx", "commit create issue", func(tx *sqlx.Tx) error {
 		var number int
@@ -80,14 +80,14 @@ func getIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) (Issu
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Issue{}, ErrIssueNotFound
+			return Issue{}, ErrNotFound
 		}
 		return Issue{}, fmt.Errorf("get issue: %w", err)
 	}
 	return issue, nil
 }
 
-func listIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Issue, error) {
+func listIssues(ctx context.Context, db *sqlx.DB, params ListParams) ([]Issue, error) {
 	query := `SELECT ` + issueCols + `
 		 FROM issues
 		 WHERE project_id = $1
@@ -112,7 +112,7 @@ func listIssues(ctx context.Context, db *sqlx.DB, params ListIssuesParams) ([]Is
 	return issues, nil
 }
 
-func updateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Issue, error) {
+func updateIssue(ctx context.Context, db *sqlx.DB, params UpdateParams) (Issue, error) {
 	var issue Issue
 	err := db.QueryRowxContext(ctx,
 		`UPDATE issues
@@ -130,7 +130,7 @@ func updateIssue(ctx context.Context, db *sqlx.DB, params UpdateIssueParams) (Is
 	).StructScan(&issue)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Issue{}, ErrIssueNotFound
+			return Issue{}, ErrNotFound
 		}
 		return Issue{}, fmt.Errorf("update issue: %w", err)
 	}
@@ -154,7 +154,7 @@ func archiveIssue(ctx context.Context, db *sqlx.DB, projectID, issueID string) e
 		return fmt.Errorf("archive issue rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrIssueNotFound
+		return ErrNotFound
 	}
 	return nil
 }
@@ -166,7 +166,7 @@ type issuePosition struct {
 
 // moveIssue persists the move of an issue to a target status/position.
 // It uses a two-phase offset strategy to avoid transient unique index collisions.
-func moveIssue(ctx context.Context, db *sqlx.DB, params MoveIssueParams) error {
+func moveIssue(ctx context.Context, db *sqlx.DB, params MoveParams) error {
 	tx, err := db.BeginTxx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -176,7 +176,7 @@ func moveIssue(ctx context.Context, db *sqlx.DB, params MoveIssueParams) error {
 	current, err := getIssuePositionForUpdate(ctx, tx, params.ProjectID, params.IssueID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrIssueNotFound
+			return ErrNotFound
 		}
 		return err
 	}

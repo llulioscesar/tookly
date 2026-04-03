@@ -21,47 +21,47 @@ func TestCreateProject(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		arrange func(*testing.T, *sqlx.DB) (CreateProjectParams, func(*testing.T))
+		arrange func(*testing.T, *sqlx.DB) (CreateParams, func(*testing.T))
 		wantErr error
 	}{
 		{
 			name: "creates project successfully",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateProjectParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				ws := seedWorkspace(t, db)
-				params := CreateProjectParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG", Description: "eng team"}
+				params := CreateParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG", Description: "eng team"}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "returned project has correct fields",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateProjectParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				ws := seedWorkspace(t, db)
-				params := CreateProjectParams{WorkspaceID: ws, Name: "Marketing", Key: "MKT", Description: "mkt team"}
+				params := CreateParams{WorkspaceID: ws, Name: "Marketing", Key: "MKT", Description: "mkt team"}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name:    "duplicate key in same workspace",
-			wantErr: ErrDuplicateProjectKey,
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateProjectParams, func(*testing.T)) {
+			wantErr: ErrDuplicateKey,
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				ws := seedWorkspace(t, db)
-				_, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "First", Key: "DUP"})
+				_, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "First", Key: "DUP"})
 				if err != nil {
 					t.Fatalf("seed project: %v", err)
 				}
-				return CreateProjectParams{WorkspaceID: ws, Name: "Second", Key: "DUP"}, nil
+				return CreateParams{WorkspaceID: ws, Name: "Second", Key: "DUP"}, nil
 			},
 		},
 		{
 			name: "same key in different workspaces is allowed",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateProjectParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				ws1 := seedWorkspace(t, db)
 				ws2 := seedWorkspace(t, db)
-				_, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws1, Name: "First", Key: "ENG"})
+				_, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws1, Name: "First", Key: "ENG"})
 				if err != nil {
 					t.Fatalf("seed project ws1: %v", err)
 				}
-				return CreateProjectParams{WorkspaceID: ws2, Name: "Second", Key: "ENG"}, nil
+				return CreateParams{WorkspaceID: ws2, Name: "Second", Key: "ENG"}, nil
 			},
 		},
 	}
@@ -69,7 +69,7 @@ func TestCreateProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, check := tt.arrange(t, db)
-			got, err := CreateProject(context.Background(), db, params)
+			got, err := Create(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateProject() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -104,7 +104,7 @@ func TestGetProject(t *testing.T) {
 			name: "returns existing project",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				ws := seedWorkspace(t, db)
-				proj, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG"})
+				proj, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG"})
 				if err != nil {
 					t.Fatalf("seed project: %v", err)
 				}
@@ -113,7 +113,7 @@ func TestGetProject(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrProjectNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				return "00000000-0000-0000-0000-000000000000", nil
 			},
@@ -122,11 +122,11 @@ func TestGetProject(t *testing.T) {
 			name: "returns archived project",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				ws := seedWorkspace(t, db)
-				proj, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Old", Key: "OLD"})
+				proj, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Old", Key: "OLD"})
 				if err != nil {
 					t.Fatalf("seed project: %v", err)
 				}
-				if err := ArchiveProject(context.Background(), db, proj.ID); err != nil {
+				if err := Archive(context.Background(), db, proj.ID); err != nil {
 					t.Fatalf("archive project: %v", err)
 				}
 				return proj.ID, func(t *testing.T) {}
@@ -137,7 +137,7 @@ func TestGetProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id, check := tt.arrange(t, db)
-			got, err := GetProject(context.Background(), db, id)
+			got, err := Get(context.Background(), db, id)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("GetProject() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -164,15 +164,15 @@ func TestListProjects(t *testing.T) {
 			name: "returns only active projects",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T, []Project)) {
 				ws := seedWorkspace(t, db)
-				active, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Active", Key: "ACT"})
+				active, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Active", Key: "ACT"})
 				if err != nil {
 					t.Fatalf("seed active project: %v", err)
 				}
-				archived, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Archived", Key: "ARC"})
+				archived, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Archived", Key: "ARC"})
 				if err != nil {
 					t.Fatalf("seed archived project: %v", err)
 				}
-				if err := ArchiveProject(context.Background(), db, archived.ID); err != nil {
+				if err := Archive(context.Background(), db, archived.ID); err != nil {
 					t.Fatalf("archive project: %v", err)
 				}
 				return ws, func(t *testing.T, got []Project) {
@@ -201,7 +201,7 @@ func TestListProjects(t *testing.T) {
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T, []Project)) {
 				ws1 := seedWorkspace(t, db)
 				ws2 := seedWorkspace(t, db)
-				if _, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws2, Name: "Other", Key: "OTH"}); err != nil {
+				if _, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws2, Name: "Other", Key: "OTH"}); err != nil {
 					t.Fatalf("seed other project: %v", err)
 				}
 				return ws1, func(t *testing.T, got []Project) {
@@ -216,7 +216,7 @@ func TestListProjects(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			wsID, check := tt.arrange(t, db)
-			got, err := ListProjects(context.Background(), db, wsID)
+			got, err := List(context.Background(), db, wsID)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ListProjects() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -240,7 +240,7 @@ func TestArchiveProject(t *testing.T) {
 			name: "archives active project",
 			arrange: func(t *testing.T, db *sqlx.DB) string {
 				ws := seedWorkspace(t, db)
-				proj, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG"})
+				proj, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Engineering", Key: "ENG"})
 				if err != nil {
 					t.Fatalf("seed project: %v", err)
 				}
@@ -249,21 +249,21 @@ func TestArchiveProject(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrProjectNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) string {
 				return "00000000-0000-0000-0000-000000000000"
 			},
 		},
 		{
 			name:    "already archived",
-			wantErr: ErrProjectNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) string {
 				ws := seedWorkspace(t, db)
-				proj, err := CreateProject(context.Background(), db, CreateProjectParams{WorkspaceID: ws, Name: "Old", Key: "OLD"})
+				proj, err := Create(context.Background(), db, CreateParams{WorkspaceID: ws, Name: "Old", Key: "OLD"})
 				if err != nil {
 					t.Fatalf("seed project: %v", err)
 				}
-				if err := ArchiveProject(context.Background(), db, proj.ID); err != nil {
+				if err := Archive(context.Background(), db, proj.ID); err != nil {
 					t.Fatalf("first archive: %v", err)
 				}
 				return proj.ID
@@ -274,12 +274,12 @@ func TestArchiveProject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id := tt.arrange(t, db)
-			err := ArchiveProject(context.Background(), db, id)
+			err := Archive(context.Background(), db, id)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ArchiveProject() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 			if err == nil {
-				got, err := GetProject(context.Background(), db, id)
+				got, err := Get(context.Background(), db, id)
 				if err != nil {
 					t.Fatalf("get archived project: %v", err)
 				}

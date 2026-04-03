@@ -21,33 +21,33 @@ func TestCreateWorkspace(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		arrange func(*testing.T, *sqlx.DB) (CreateWorkspaceParams, func(*testing.T))
+		arrange func(*testing.T, *sqlx.DB) (CreateParams, func(*testing.T))
 		wantErr error
 	}{
 		{
 			name: "creates workspace successfully",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateWorkspaceParams, func(*testing.T)) {
-				params := CreateWorkspaceParams{Name: "Acme Corp", Slug: "ws-" + testpg.UniqueSuffix(t, db)}
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
+				params := CreateParams{Name: "Acme Corp", Slug: "ws-" + testpg.UniqueSuffix(t, db)}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name: "returned workspace has correct fields",
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateWorkspaceParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				slug := "ws-" + testpg.UniqueSuffix(t, db)
-				params := CreateWorkspaceParams{Name: "Check Fields", Slug: slug}
+				params := CreateParams{Name: "Check Fields", Slug: slug}
 				return params, func(t *testing.T) {}
 			},
 		},
 		{
 			name:    "duplicate slug",
 			wantErr: ErrDuplicateSlug,
-			arrange: func(t *testing.T, db *sqlx.DB) (CreateWorkspaceParams, func(*testing.T)) {
+			arrange: func(t *testing.T, db *sqlx.DB) (CreateParams, func(*testing.T)) {
 				slug := "ws-" + testpg.UniqueSuffix(t, db)
-				if _, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "First", Slug: slug}); err != nil {
+				if _, err := Create(context.Background(), db, CreateParams{Name: "First", Slug: slug}); err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
-				return CreateWorkspaceParams{Name: "Second", Slug: slug}, nil
+				return CreateParams{Name: "Second", Slug: slug}, nil
 			},
 		},
 	}
@@ -55,7 +55,7 @@ func TestCreateWorkspace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			params, check := tt.arrange(t, db)
-			got, err := CreateWorkspace(context.Background(), db, params)
+			got, err := Create(context.Background(), db, params)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("CreateWorkspace() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -89,7 +89,7 @@ func TestGetWorkspace(t *testing.T) {
 		{
 			name: "returns existing workspace",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "Acme", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "Acme", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -98,7 +98,7 @@ func TestGetWorkspace(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrWorkspaceNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				return "00000000-0000-0000-0000-000000000000", nil
 			},
@@ -106,11 +106,11 @@ func TestGetWorkspace(t *testing.T) {
 		{
 			name: "returns archived workspace",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "Old", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "Old", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
-				if err := ArchiveWorkspace(context.Background(), db, ws.ID); err != nil {
+				if err := Archive(context.Background(), db, ws.ID); err != nil {
 					t.Fatalf("archive workspace: %v", err)
 				}
 				return ws.ID, func(t *testing.T) {}
@@ -121,7 +121,7 @@ func TestGetWorkspace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id, check := tt.arrange(t, db)
-			got, err := GetWorkspace(context.Background(), db, id)
+			got, err := Get(context.Background(), db, id)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("GetWorkspace() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -148,7 +148,7 @@ func TestGetWorkspaceBySlug(t *testing.T) {
 			name: "returns workspace by slug",
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				slug := "ws-" + testpg.UniqueSuffix(t, db)
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "Acme", Slug: slug})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "Acme", Slug: slug})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -161,7 +161,7 @@ func TestGetWorkspaceBySlug(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrWorkspaceNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) (string, func(*testing.T)) {
 				return "slug-that-does-not-exist", nil
 			},
@@ -171,7 +171,7 @@ func TestGetWorkspaceBySlug(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			slug, check := tt.arrange(t, db)
-			got, err := GetWorkspaceBySlug(context.Background(), db, slug)
+			got, err := GetBySlug(context.Background(), db, slug)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("GetWorkspaceBySlug() error = %v, wantErr = %v", err, tt.wantErr)
 			}
@@ -197,7 +197,7 @@ func TestArchiveWorkspace(t *testing.T) {
 		{
 			name: "archives active workspace",
 			arrange: func(t *testing.T, db *sqlx.DB) string {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "Acme", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "Acme", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -206,20 +206,20 @@ func TestArchiveWorkspace(t *testing.T) {
 		},
 		{
 			name:    "not found",
-			wantErr: ErrWorkspaceNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) string {
 				return "00000000-0000-0000-0000-000000000000"
 			},
 		},
 		{
 			name:    "already archived",
-			wantErr: ErrWorkspaceNotFound,
+			wantErr: ErrNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) string {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "Old", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "Old", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
-				if err := ArchiveWorkspace(context.Background(), db, ws.ID); err != nil {
+				if err := Archive(context.Background(), db, ws.ID); err != nil {
 					t.Fatalf("first archive: %v", err)
 				}
 				return ws.ID
@@ -230,12 +230,12 @@ func TestArchiveWorkspace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id := tt.arrange(t, db)
-			err := ArchiveWorkspace(context.Background(), db, id)
+			err := Archive(context.Background(), db, id)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("ArchiveWorkspace() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 			if err == nil {
-				got, err := GetWorkspace(context.Background(), db, id)
+				got, err := Get(context.Background(), db, id)
 				if err != nil {
 					t.Fatalf("get archived workspace: %v", err)
 				}
@@ -259,7 +259,7 @@ func TestWorkspaceMembers(t *testing.T) {
 		{
 			name: "add and list member",
 			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -281,7 +281,7 @@ func TestWorkspaceMembers(t *testing.T) {
 		{
 			name: "add same member twice updates role",
 			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -306,7 +306,7 @@ func TestWorkspaceMembers(t *testing.T) {
 		{
 			name: "remove member excludes from list",
 			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -331,7 +331,7 @@ func TestWorkspaceMembers(t *testing.T) {
 		{
 			name: "update member role",
 			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
@@ -354,7 +354,7 @@ func TestWorkspaceMembers(t *testing.T) {
 			name:    "remove non-existent member",
 			wantErr: ErrMemberNotFound,
 			arrange: func(t *testing.T, db *sqlx.DB) func(*testing.T) {
-				ws, err := CreateWorkspace(context.Background(), db, CreateWorkspaceParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
+				ws, err := Create(context.Background(), db, CreateParams{Name: "WS", Slug: "ws-" + testpg.UniqueSuffix(t, db)})
 				if err != nil {
 					t.Fatalf("seed workspace: %v", err)
 				}
