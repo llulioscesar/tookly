@@ -37,9 +37,9 @@ func fail(w http.ResponseWriter, err error) {
 		errors.Is(err, authz.ErrBoardNotFound),
 		errors.Is(err, authz.ErrColumnNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrBoardNotFound), errors.Is(err, ErrColumnNotFound):
+	case errors.Is(err, ErrNotFound), errors.Is(err, ErrColumnNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrDuplicateBoardName), errors.Is(err, ErrDuplicateColumnName):
+	case errors.Is(err, ErrDuplicateName), errors.Is(err, ErrDuplicateColumnName):
 		respond.Error(w, http.StatusConflict, err.Error())
 	default:
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
@@ -67,7 +67,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := CreateBoardParams{
+		params := CreateParams{
 			ProjectID:   r.PathValue("projectID"),
 			Name:        body.Name,
 			Type:        body.Type,
@@ -77,7 +77,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		b, err := CreateBoard(r.Context(), db, params)
+		b, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -93,7 +93,7 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		list, err := ListBoards(r.Context(), db, projID)
+		list, err := List(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -109,7 +109,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		b, err := GetBoard(r.Context(), db, boardID)
+		b, err := Get(r.Context(), db, boardID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -130,7 +130,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		if err := ArchiveBoard(r.Context(), db, boardID); err != nil {
+		if err := Archive(r.Context(), db, boardID); err != nil {
 			fail(w, err)
 			return
 		}

@@ -33,7 +33,7 @@ func fail(w http.ResponseWriter, err error) {
 		respond.Error(w, http.StatusForbidden, "forbidden")
 	case errors.Is(err, authz.ErrWorkspaceNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrWorkspaceNotFound), errors.Is(err, ErrMemberNotFound):
+	case errors.Is(err, ErrNotFound), errors.Is(err, ErrMemberNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateSlug):
 		respond.Error(w, http.StatusConflict, err.Error())
@@ -57,12 +57,12 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := CreateWorkspaceParams{Name: body.Name, Slug: body.Slug, OwnerID: authedUserID}
+		params := CreateParams{Name: body.Name, Slug: body.Slug, OwnerID: authedUserID}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		ws, err := CreateWorkspace(r.Context(), db, params)
+		ws, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -78,7 +78,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		ws, err := GetWorkspace(r.Context(), db, wsID)
+		ws, err := Get(r.Context(), db, wsID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -94,7 +94,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		if err := ArchiveWorkspace(r.Context(), db, wsID); err != nil {
+		if err := Archive(r.Context(), db, wsID); err != nil {
 			fail(w, err)
 			return
 		}

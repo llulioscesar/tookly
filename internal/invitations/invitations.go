@@ -15,15 +15,15 @@ import (
 	"github.com/start-codex/tookly/internal/sessions"
 )
 
-const InvitationTTL = 7 * 24 * time.Hour
+const TTL = 7 * 24 * time.Hour
 
 var (
-	ErrInvitationNotFound  = errors.New("invitation not found")
-	ErrInvitationExpired   = errors.New("invitation expired")
-	ErrInvitationRevoked   = errors.New("invitation revoked")
-	ErrInvitationUsed      = errors.New("invitation already accepted")
-	ErrDuplicateInvitation = errors.New("pending invitation already exists for this email")
-	ErrAlreadyMember       = errors.New("user is already a workspace member")
+	ErrNotFound      = errors.New("invitation not found")
+	ErrExpired       = errors.New("invitation expired")
+	ErrRevoked       = errors.New("invitation revoked")
+	ErrUsed          = errors.New("invitation already accepted")
+	ErrDuplicate     = errors.New("pending invitation already exists for this email")
+	ErrAlreadyMember = errors.New("user is already a workspace member")
 )
 
 var validInviteRoles = map[string]bool{"admin": true, "member": true}
@@ -41,14 +41,14 @@ type Invitation struct {
 	CreatedAt   time.Time  `db:"created_at"   json:"created_at"`
 }
 
-type CreateInvitationParams struct {
+type CreateParams struct {
 	WorkspaceID string
 	Email       string
 	Role        string
 	InvitedBy   string
 }
 
-func (p CreateInvitationParams) Validate() error {
+func (p CreateParams) Validate() error {
 	if p.WorkspaceID == "" {
 		return errors.New("workspace_id is required")
 	}
@@ -64,7 +64,7 @@ func (p CreateInvitationParams) Validate() error {
 	return nil
 }
 
-func CreateInvitation(ctx context.Context, db *sqlx.DB, params CreateInvitationParams) (string, Invitation, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (string, Invitation, error) {
 	if db == nil {
 		return "", Invitation{}, errors.New("db is required")
 	}
@@ -86,7 +86,7 @@ func CreateInvitation(ctx context.Context, db *sqlx.DB, params CreateInvitationP
 		return "", Invitation{}, fmt.Errorf("generate token: %w", err)
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	expiresAt := time.Now().Add(InvitationTTL)
+	expiresAt := time.Now().Add(TTL)
 
 	inv, err := createInvitation(ctx, db, params, tokenHash, expiresAt)
 	if err != nil {
@@ -95,7 +95,7 @@ func CreateInvitation(ctx context.Context, db *sqlx.DB, params CreateInvitationP
 	return rawToken, inv, nil
 }
 
-func GetInvitation(ctx context.Context, db *sqlx.DB, rawToken string) (Invitation, error) {
+func Get(ctx context.Context, db *sqlx.DB, rawToken string) (Invitation, error) {
 	if db == nil {
 		return Invitation{}, errors.New("db is required")
 	}
@@ -108,22 +108,22 @@ func GetInvitation(ctx context.Context, db *sqlx.DB, rawToken string) (Invitatio
 		return Invitation{}, err
 	}
 	if inv.Status == "revoked" {
-		return Invitation{}, ErrInvitationRevoked
+		return Invitation{}, ErrRevoked
 	}
 	if inv.Status == "accepted" {
-		return Invitation{}, ErrInvitationUsed
+		return Invitation{}, ErrUsed
 	}
 	if time.Now().After(inv.ExpiresAt) {
-		return Invitation{}, ErrInvitationExpired
+		return Invitation{}, ErrExpired
 	}
 	return inv, nil
 }
 
-func AcceptInvitation(ctx context.Context, db *sqlx.DB, rawToken, userID string) error {
+func Accept(ctx context.Context, db *sqlx.DB, rawToken, userID string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
-	inv, err := GetInvitation(ctx, db, rawToken)
+	inv, err := Get(ctx, db, rawToken)
 	if err != nil {
 		return err
 	}
@@ -193,14 +193,14 @@ func Resend(ctx context.Context, db *sqlx.DB, invitationID string) (string, erro
 		return "", fmt.Errorf("generate token: %w", err)
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	expiresAt := time.Now().Add(InvitationTTL)
+	expiresAt := time.Now().Add(TTL)
 	if err := resendInvitation(ctx, db, invitationID, tokenHash, expiresAt); err != nil {
 		return "", err
 	}
 	return rawToken, nil
 }
 
-func GetInvitationByID(ctx context.Context, db *sqlx.DB, id string) (Invitation, error) {
+func GetByID(ctx context.Context, db *sqlx.DB, id string) (Invitation, error) {
 	if db == nil {
 		return Invitation{}, errors.New("db is required")
 	}

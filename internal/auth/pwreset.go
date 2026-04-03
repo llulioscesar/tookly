@@ -3,7 +3,7 @@
 // Use of this software is governed by the Business Source License 1.1
 // included in the LICENSE file at the root of this repository.
 
-package passwordreset
+package auth
 
 import (
 	"context"
@@ -14,15 +14,14 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/tookly/internal/sessions"
-	"github.com/start-codex/tookly/internal/users"
 )
 
-const TokenTTL = 1 * time.Hour
+const ResetTokenTTL = 1 * time.Hour
 
 var (
-	ErrTokenNotFound = errors.New("reset token not found")
-	ErrTokenExpired  = errors.New("reset token expired")
-	ErrTokenUsed     = errors.New("reset token already used")
+	ErrResetTokenNotFound = errors.New("reset token not found")
+	ErrResetTokenExpired  = errors.New("reset token expired")
+	ErrResetTokenUsed     = errors.New("reset token already used")
 )
 
 type ResetToken struct {
@@ -34,9 +33,9 @@ type ResetToken struct {
 	CreatedAt time.Time  `db:"created_at"`
 }
 
-// CreateToken generates a password reset token for the given user.
+// CreateResetToken generates a password reset token for the given user.
 // Returns the raw token (to be sent via email) and an error.
-func CreateToken(ctx context.Context, db *sqlx.DB, userID string) (string, error) {
+func CreateResetToken(ctx context.Context, db *sqlx.DB, userID string) (string, error) {
 	if db == nil {
 		return "", errors.New("db is required")
 	}
@@ -48,16 +47,16 @@ func CreateToken(ctx context.Context, db *sqlx.DB, userID string) (string, error
 		return "", fmt.Errorf("generate token: %w", err)
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	expiresAt := time.Now().Add(TokenTTL)
-	if err := createToken(ctx, db, userID, tokenHash, expiresAt); err != nil {
+	expiresAt := time.Now().Add(ResetTokenTTL)
+	if err := createResetToken(ctx, db, userID, tokenHash, expiresAt); err != nil {
 		return "", err
 	}
 	return rawToken, nil
 }
 
-// ValidateToken checks if a reset token is valid (exists, not used, not expired).
+// ValidateResetToken checks if a reset token is valid (exists, not used, not expired).
 // Returns the user ID associated with the token.
-func ValidateToken(ctx context.Context, db *sqlx.DB, rawToken string) (string, error) {
+func ValidateResetToken(ctx context.Context, db *sqlx.DB, rawToken string) (string, error) {
 	if db == nil {
 		return "", errors.New("db is required")
 	}
@@ -65,15 +64,15 @@ func ValidateToken(ctx context.Context, db *sqlx.DB, rawToken string) (string, e
 		return "", errors.New("token is required")
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	token, err := getTokenByHash(ctx, db, tokenHash)
+	token, err := getResetTokenByHash(ctx, db, tokenHash)
 	if err != nil {
 		return "", err
 	}
 	if token.UsedAt != nil {
-		return "", ErrTokenUsed
+		return "", ErrResetTokenUsed
 	}
 	if time.Now().After(token.ExpiresAt) {
-		return "", ErrTokenExpired
+		return "", ErrResetTokenExpired
 	}
 	return token.UserID, nil
 }
@@ -88,21 +87,21 @@ func ResetPassword(ctx context.Context, db *sqlx.DB, rawToken, newPassword strin
 	if rawToken == "" {
 		return errors.New("token is required")
 	}
-	if len(newPassword) < users.MinPasswordLength {
-		return users.ErrPasswordTooShort
+	if len(newPassword) < MinPasswordLength {
+		return ErrPasswordTooShort
 	}
 
 	// Validate token first (outside tx to fail fast)
 	tokenHash := sessions.HashToken(rawToken)
-	token, err := getTokenByHash(ctx, db, tokenHash)
+	token, err := getResetTokenByHash(ctx, db, tokenHash)
 	if err != nil {
 		return err
 	}
 	if token.UsedAt != nil {
-		return ErrTokenUsed
+		return ErrResetTokenUsed
 	}
 	if time.Now().After(token.ExpiresAt) {
-		return ErrTokenExpired
+		return ErrResetTokenExpired
 	}
 
 	// Atomic: update password + mark token used
@@ -112,11 +111,11 @@ func ResetPassword(ctx context.Context, db *sqlx.DB, rawToken, newPassword strin
 	}
 	defer tx.Rollback()
 
-	if err := users.SetPasswordTx(ctx, tx, token.UserID, newPassword); err != nil {
+	if err := SetPasswordTx(ctx, tx, token.UserID, newPassword); err != nil {
 		return fmt.Errorf("set password: %w", err)
 	}
 
-	if err := markTokenUsedTx(ctx, tx, tokenHash); err != nil {
+	if err := markResetTokenUsedTx(ctx, tx, tokenHash); err != nil {
 		return fmt.Errorf("mark token used: %w", err)
 	}
 

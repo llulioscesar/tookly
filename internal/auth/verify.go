@@ -3,7 +3,7 @@
 // Use of this software is governed by the Business Source License 1.1
 // included in the LICENSE file at the root of this repository.
 
-package emailverification
+package auth
 
 import (
 	"context"
@@ -13,19 +13,19 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/start-codex/tookly/internal/email"
-	"github.com/start-codex/tookly/internal/instance"
+	"github.com/start-codex/tookly/internal/pgutil"
 	"github.com/start-codex/tookly/internal/sessions"
 )
 
-const TokenTTL = 24 * time.Hour
+const VerifyTokenTTL = 24 * time.Hour
 
 var (
-	ErrTokenNotFound = errors.New("verification token not found")
-	ErrTokenExpired  = errors.New("verification token expired")
-	ErrTokenUsed     = errors.New("verification token already used")
+	ErrVerifyTokenNotFound = errors.New("verification token not found")
+	ErrVerifyTokenExpired  = errors.New("verification token expired")
+	ErrVerifyTokenUsed     = errors.New("verification token already used")
 )
 
-func CreateToken(ctx context.Context, db *sqlx.DB, userID string) (string, error) {
+func CreateVerifyToken(ctx context.Context, db *sqlx.DB, userID string) (string, error) {
 	if db == nil {
 		return "", errors.New("db is required")
 	}
@@ -37,8 +37,8 @@ func CreateToken(ctx context.Context, db *sqlx.DB, userID string) (string, error
 		return "", fmt.Errorf("generate token: %w", err)
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	expiresAt := time.Now().Add(TokenTTL)
-	if err := createToken(ctx, db, userID, tokenHash, expiresAt); err != nil {
+	expiresAt := time.Now().Add(VerifyTokenTTL)
+	if err := createVerifyToken(ctx, db, userID, tokenHash, expiresAt); err != nil {
 		return "", err
 	}
 	return rawToken, nil
@@ -52,32 +52,32 @@ func VerifyEmail(ctx context.Context, db *sqlx.DB, rawToken string) error {
 		return errors.New("token is required")
 	}
 	tokenHash := sessions.HashToken(rawToken)
-	token, err := getTokenByHash(ctx, db, tokenHash)
+	token, err := getVerifyTokenByHash(ctx, db, tokenHash)
 	if err != nil {
 		return err
 	}
 	if token.UsedAt != nil {
-		return ErrTokenUsed
+		return ErrVerifyTokenUsed
 	}
 	if time.Now().After(token.ExpiresAt) {
-		return ErrTokenExpired
+		return ErrVerifyTokenExpired
 	}
 
-	// Set email_verified_at on user
-	if err := setEmailVerified(ctx, db, token.UserID); err != nil {
-		return fmt.Errorf("set verified: %w", err)
-	}
-	// Mark token as used
-	return markTokenUsed(ctx, db, tokenHash)
+	return pgutil.WithTx(ctx, db, nil, "begin tx", "commit", func(tx *sqlx.Tx) error {
+		if err := setEmailVerifiedTx(ctx, tx, token.UserID); err != nil {
+			return fmt.Errorf("set verified: %w", err)
+		}
+		return markVerifyTokenUsedTx(ctx, tx, tokenHash)
+	})
 }
 
 func IsVerificationRequired(ctx context.Context, db *sqlx.DB) (bool, error) {
-	val, err := instance.GetConfig(ctx, db, "email_verification_required")
+	var val string
+	err := db.GetContext(ctx, &val,
+		`SELECT value FROM instance_config WHERE key = 'email_verification_required'`)
 	if err != nil {
-		if errors.Is(err, instance.ErrConfigNotFound) {
-			return false, nil // missing key → false
-		}
-		return false, err
+		// Key missing or any DB error — treat as not required
+		return false, nil
 	}
 	if val != "true" && val != "false" {
 		return false, fmt.Errorf("invalid email_verification_required value: %q", val)
@@ -87,7 +87,7 @@ func IsVerificationRequired(ctx context.Context, db *sqlx.DB) (bool, error) {
 
 // SendVerificationEmail creates a token and sends the verification email.
 func SendVerificationEmail(ctx context.Context, db *sqlx.DB, userID, recipientEmail, baseURL string) error {
-	rawToken, err := CreateToken(ctx, db, userID)
+	rawToken, err := CreateVerifyToken(ctx, db, userID)
 	if err != nil {
 		return fmt.Errorf("create verification token: %w", err)
 	}
@@ -99,7 +99,10 @@ func SendVerificationEmail(ctx context.Context, db *sqlx.DB, userID, recipientEm
 		return fmt.Errorf("render verification email: %w", err)
 	}
 
-	smtpConfig, _ := instance.LoadSMTPConfig(ctx, db)
+	smtpConfig, err := loadSMTPConfig(ctx, db)
+	if err != nil {
+		return fmt.Errorf("smtp not configured: %w", err)
+	}
 	if err := email.Send(smtpConfig, email.Message{
 		To:      recipientEmail,
 		Subject: "Verify your Tookly email",

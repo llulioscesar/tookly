@@ -11,10 +11,10 @@ import (
 	"os"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/start-codex/tookly/internal/auth"
 	"github.com/start-codex/tookly/internal/authz"
 	"github.com/start-codex/tookly/internal/email"
 	"github.com/start-codex/tookly/internal/respond"
-	"github.com/start-codex/tookly/internal/users"
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
@@ -23,13 +23,15 @@ func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
 	mux.HandleFunc("GET /instance/smtp", handleGetSMTP(db))
 	mux.HandleFunc("POST /instance/smtp", handleSetSMTP(db))
 	mux.HandleFunc("POST /instance/smtp/test", handleTestSMTP(db))
+	mux.HandleFunc("GET /instance/verification", handleGetVerificationConfig(db))
+	mux.HandleFunc("POST /instance/verification", handleSetVerificationConfig(db))
 }
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrAlreadyInitialized):
 		respond.Error(w, http.StatusConflict, "instance already initialized")
-	case errors.Is(err, users.ErrDuplicateEmail):
+	case errors.Is(err, auth.ErrDuplicateEmail):
 		respond.Error(w, http.StatusConflict, "email already exists")
 	default:
 		respond.Error(w, http.StatusInternalServerError, "internal server error")
@@ -158,7 +160,7 @@ func handleTestSMTP(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
-		user, err := users.GetUser(r.Context(), db, userID)
+		user, err := auth.Get(r.Context(), db, userID)
 		if err != nil {
 			respond.Error(w, http.StatusInternalServerError, "internal server error")
 			return
@@ -182,5 +184,45 @@ func handleTestSMTP(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		respond.JSON(w, http.StatusOK, map[string]string{"status": "sent", "to": user.Email})
+	}
+}
+
+func handleGetVerificationConfig(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.RequireInstanceAdmin(r.Context(), db); err != nil {
+			respond.Error(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		required, err := auth.IsVerificationRequired(r.Context(), db)
+		if err != nil {
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]bool{"required": required})
+	}
+}
+
+func handleSetVerificationConfig(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := authz.RequireInstanceAdmin(r.Context(), db); err != nil {
+			respond.Error(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		var body struct {
+			Required bool `json:"required"`
+		}
+		if err := respond.Decode(r, &body); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		val := "false"
+		if body.Required {
+			val = "true"
+		}
+		if err := SetConfig(r.Context(), db, "email_verification_required", val); err != nil {
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "saved"})
 	}
 }

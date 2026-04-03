@@ -30,9 +30,9 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, authz.ErrWorkspaceNotFound),
 		errors.Is(err, authz.ErrProjectNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrIssueTypeNotFound):
+	case errors.Is(err, ErrNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrDuplicateIssueType):
+	case errors.Is(err, ErrDuplicate):
 		respond.Error(w, http.StatusConflict, err.Error())
 	default:
 		slog.Error("issuetypes handler error", "error", err)
@@ -61,7 +61,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := CreateIssueTypeParams{
+		params := CreateParams{
 			ProjectID: r.PathValue("projectID"),
 			Name:      body.Name,
 			Icon:      body.Icon,
@@ -71,7 +71,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		it, err := CreateIssueType(r.Context(), db, params)
+		it, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -87,7 +87,7 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		list, err := ListIssueTypes(r.Context(), db, projID)
+		list, err := List(r.Context(), db, projID)
 		if err != nil {
 			fail(w, err)
 			return
@@ -108,7 +108,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		if err := ArchiveIssueType(r.Context(), db, projID, r.PathValue("issueTypeID")); err != nil {
+		if err := Archive(r.Context(), db, projID, r.PathValue("issueTypeID")); err != nil {
 			fail(w, err)
 			return
 		}

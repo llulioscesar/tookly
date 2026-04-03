@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	ErrBoardNotFound       = errors.New("board not found")
+	ErrNotFound            = errors.New("board not found")
 	ErrColumnNotFound      = errors.New("board column not found")
-	ErrDuplicateBoardName  = errors.New("board name already exists in project")
+	ErrDuplicateName       = errors.New("board name already exists in project")
 	ErrDuplicateColumnName = errors.New("column name already exists in board")
 )
 
@@ -33,7 +33,7 @@ type Board struct {
 	ArchivedAt  *time.Time `db:"archived_at"  json:"archived_at,omitempty"`
 }
 
-type BoardColumn struct {
+type Column struct {
 	ID         string     `db:"id"          json:"id"`
 	BoardID    string     `db:"board_id"    json:"board_id"`
 	Name       string     `db:"name"        json:"name"`
@@ -43,14 +43,14 @@ type BoardColumn struct {
 	ArchivedAt *time.Time `db:"archived_at" json:"archived_at,omitempty"`
 }
 
-type CreateBoardParams struct {
+type CreateParams struct {
 	ProjectID   string
 	Name        string
 	Type        string
 	FilterQuery string
 }
 
-func (params CreateBoardParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.ProjectID == "" {
 		return errors.New("project_id is required")
 	}
@@ -78,7 +78,7 @@ func (params AddColumnParams) Validate() error {
 	return nil
 }
 
-func CreateBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Board, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Board, error) {
 	if db == nil {
 		return Board{}, errors.New("db is required")
 	}
@@ -88,7 +88,7 @@ func CreateBoard(ctx context.Context, db *sqlx.DB, params CreateBoardParams) (Bo
 	return createBoard(ctx, db, params)
 }
 
-func GetBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
+func Get(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
 	if db == nil {
 		return Board{}, errors.New("db is required")
 	}
@@ -98,7 +98,7 @@ func GetBoard(ctx context.Context, db *sqlx.DB, id string) (Board, error) {
 	return getBoard(ctx, db, id)
 }
 
-func ListBoards(ctx context.Context, db *sqlx.DB, projectID string) ([]Board, error) {
+func List(ctx context.Context, db *sqlx.DB, projectID string) ([]Board, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -108,7 +108,7 @@ func ListBoards(ctx context.Context, db *sqlx.DB, projectID string) ([]Board, er
 	return listBoards(ctx, db, projectID)
 }
 
-func ArchiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
+func Archive(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
@@ -118,17 +118,17 @@ func ArchiveBoard(ctx context.Context, db *sqlx.DB, id string) error {
 	return archiveBoard(ctx, db, id)
 }
 
-func AddColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (BoardColumn, error) {
+func AddColumn(ctx context.Context, db *sqlx.DB, params AddColumnParams) (Column, error) {
 	if db == nil {
-		return BoardColumn{}, errors.New("db is required")
+		return Column{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return BoardColumn{}, err
+		return Column{}, err
 	}
 	return addColumn(ctx, db, params)
 }
 
-func ListColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]BoardColumn, error) {
+func ListColumns(ctx context.Context, db *sqlx.DB, boardID string) ([]Column, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}

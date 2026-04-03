@@ -3,7 +3,7 @@
 // Use of this software is governed by the Business Source License 1.1
 // included in the LICENSE file at the root of this repository.
 
-package users
+package auth
 
 import (
 	"crypto/rand"

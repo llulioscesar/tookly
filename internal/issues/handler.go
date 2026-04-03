@@ -45,7 +45,7 @@ func fail(w http.ResponseWriter, err error) {
 	case errors.Is(err, authz.ErrWorkspaceNotFound),
 		errors.Is(err, authz.ErrProjectNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
-	case errors.Is(err, ErrIssueNotFound):
+	case errors.Is(err, ErrNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrInvalidPriority):
 		respond.Error(w, http.StatusUnprocessableEntity, err.Error())
@@ -85,7 +85,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		params := CreateIssueParams{
+		params := CreateParams{
 			ProjectID:     r.PathValue("projectID"),
 			IssueTypeID:   body.IssueTypeID,
 			StatusID:      body.StatusID,
@@ -101,7 +101,7 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		issue, err := CreateIssue(r.Context(), db, params)
+		issue, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -117,7 +117,7 @@ func handleList(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 		q := r.URL.Query()
-		list, err := ListIssues(r.Context(), db, ListIssuesParams{
+		list, err := List(r.Context(), db, ListParams{
 			ProjectID:  r.PathValue("projectID"),
 			StatusID:   q.Get("status_id"),
 			AssigneeID: q.Get("assignee_id"),
@@ -136,7 +136,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		issue, err := GetIssue(r.Context(), db, r.PathValue("projectID"), r.PathValue("issueID"))
+		issue, err := Get(r.Context(), db, r.PathValue("projectID"), r.PathValue("issueID"))
 		if err != nil {
 			fail(w, err)
 			return
@@ -167,7 +167,7 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		params := UpdateIssueParams{
+		params := UpdateParams{
 			IssueID:     r.PathValue("issueID"),
 			ProjectID:   r.PathValue("projectID"),
 			Title:       body.Title,
@@ -180,7 +180,7 @@ func handleUpdate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		issue, err := UpdateIssue(r.Context(), db, params)
+		issue, err := Update(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
@@ -195,7 +195,7 @@ func handleArchive(db *sqlx.DB) http.HandlerFunc {
 			fail(w, err)
 			return
 		}
-		if err := ArchiveIssue(r.Context(), db, r.PathValue("projectID"), r.PathValue("issueID")); err != nil {
+		if err := Archive(r.Context(), db, r.PathValue("projectID"), r.PathValue("issueID")); err != nil {
 			fail(w, err)
 			return
 		}
@@ -217,7 +217,7 @@ func handleMove(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := MoveIssueParams{
+		params := MoveParams{
 			ProjectID:      r.PathValue("projectID"),
 			IssueID:        r.PathValue("issueID"),
 			TargetStatusID: body.TargetStatusID,
@@ -227,7 +227,7 @@ func handleMove(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		if err := MoveIssue(r.Context(), db, params); err != nil {
+		if err := Move(r.Context(), db, params); err != nil {
 			fail(w, err)
 			return
 		}

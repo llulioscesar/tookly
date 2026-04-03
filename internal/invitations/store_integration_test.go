@@ -23,7 +23,7 @@ func TestCreateInvitation_Success(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	rawToken, inv, err := CreateInvitation(ctx, db, CreateInvitationParams{
+	rawToken, inv, err := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID,
 		Email:       "invited@test.local",
 		Role:        "member",
@@ -51,20 +51,20 @@ func TestCreateInvitation_Duplicate(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	params := CreateInvitationParams{
+	params := CreateParams{
 		WorkspaceID: wsID,
 		Email:       "dup@test.local",
 		Role:        "member",
 		InvitedBy:   inviter,
 	}
-	_, _, err := CreateInvitation(ctx, db, params)
+	_, _, err := Create(ctx, db, params)
 	if err != nil {
 		t.Fatalf("first create error = %v", err)
 	}
 
-	_, _, err = CreateInvitation(ctx, db, params)
-	if !errors.Is(err, ErrDuplicateInvitation) {
-		t.Fatalf("duplicate error = %v, want ErrDuplicateInvitation", err)
+	_, _, err = Create(ctx, db, params)
+	if !errors.Is(err, ErrDuplicate) {
+		t.Fatalf("duplicate error = %v, want ErrDuplicate", err)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestGetInvitation_Valid(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	rawToken, _, err := CreateInvitation(ctx, db, CreateInvitationParams{
+	rawToken, _, err := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID,
 		Email:       "get@test.local",
 		Role:        "member",
@@ -86,7 +86,7 @@ func TestGetInvitation_Valid(t *testing.T) {
 		t.Fatalf("create error = %v", err)
 	}
 
-	inv, err := GetInvitation(ctx, db, rawToken)
+	inv, err := Get(ctx, db, rawToken)
 	if err != nil {
 		t.Fatalf("GetInvitation error = %v", err)
 	}
@@ -103,7 +103,7 @@ func TestGetInvitation_Expired(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	rawToken, _, _ := CreateInvitation(ctx, db, CreateInvitationParams{
+	rawToken, _, _ := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID,
 		Email:       "expired@test.local",
 		Role:        "member",
@@ -114,9 +114,9 @@ func TestGetInvitation_Expired(t *testing.T) {
 	hash := sessions.HashToken(rawToken)
 	db.ExecContext(ctx, `UPDATE invitations SET expires_at = NOW() - INTERVAL '1 day' WHERE token_hash = $1`, hash)
 
-	_, err := GetInvitation(ctx, db, rawToken)
-	if !errors.Is(err, ErrInvitationExpired) {
-		t.Fatalf("error = %v, want ErrInvitationExpired", err)
+	_, err := Get(ctx, db, rawToken)
+	if !errors.Is(err, ErrExpired) {
+		t.Fatalf("error = %v, want ErrExpired", err)
 	}
 }
 
@@ -128,7 +128,7 @@ func TestGetInvitation_Revoked(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	rawToken, inv, _ := CreateInvitation(ctx, db, CreateInvitationParams{
+	rawToken, inv, _ := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID,
 		Email:       "revoked@test.local",
 		Role:        "member",
@@ -137,9 +137,9 @@ func TestGetInvitation_Revoked(t *testing.T) {
 
 	_ = Revoke(ctx, db, inv.ID)
 
-	_, err := GetInvitation(ctx, db, rawToken)
-	if !errors.Is(err, ErrInvitationRevoked) {
-		t.Fatalf("error = %v, want ErrInvitationRevoked", err)
+	_, err := Get(ctx, db, rawToken)
+	if !errors.Is(err, ErrRevoked) {
+		t.Fatalf("error = %v, want ErrRevoked", err)
 	}
 }
 
@@ -155,14 +155,14 @@ func TestAcceptInvitation_Success(t *testing.T) {
 	// Make inviter a member so workspace exists properly
 	db.ExecContext(ctx, `INSERT INTO workspace_members (workspace_id, user_id, role) VALUES ($1, $2, 'owner')`, wsID, inviter)
 
-	rawToken, _, _ := CreateInvitation(ctx, db, CreateInvitationParams{
+	rawToken, _, _ := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID,
 		Email:       "accept@test.local",
 		Role:        "member",
 		InvitedBy:   inviter,
 	})
 
-	err := AcceptInvitation(ctx, db, rawToken, accepter)
+	err := Accept(ctx, db, rawToken, accepter)
 	if err != nil {
 		t.Fatalf("AcceptInvitation error = %v", err)
 	}
@@ -185,10 +185,10 @@ func TestListPending(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	CreateInvitation(ctx, db, CreateInvitationParams{
+	Create(ctx, db, CreateParams{
 		WorkspaceID: wsID, Email: "list1@test.local", Role: "member", InvitedBy: inviter,
 	})
-	CreateInvitation(ctx, db, CreateInvitationParams{
+	Create(ctx, db, CreateParams{
 		WorkspaceID: wsID, Email: "list2@test.local", Role: "admin", InvitedBy: inviter,
 	})
 
@@ -209,7 +209,7 @@ func TestResend(t *testing.T) {
 	wsID := testpg.SeedWorkspace(t, db)
 	ctx := context.Background()
 
-	_, inv, _ := CreateInvitation(ctx, db, CreateInvitationParams{
+	_, inv, _ := Create(ctx, db, CreateParams{
 		WorkspaceID: wsID, Email: "resend@test.local", Role: "member", InvitedBy: inviter,
 	})
 
@@ -222,7 +222,7 @@ func TestResend(t *testing.T) {
 	}
 
 	// New token should be valid
-	_, err = GetInvitation(ctx, db, newToken)
+	_, err = Get(ctx, db, newToken)
 	if err != nil {
 		t.Fatalf("GetInvitation with new token error = %v", err)
 	}

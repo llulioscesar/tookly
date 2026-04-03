@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	ErrWorkspaceNotFound = errors.New("workspace not found")
-	ErrDuplicateSlug     = errors.New("slug already exists")
-	ErrMemberNotFound    = errors.New("member not found")
+	ErrNotFound       = errors.New("workspace not found")
+	ErrDuplicateSlug  = errors.New("slug already exists")
+	ErrMemberNotFound = errors.New("member not found")
 )
 
 var validRoles = map[string]bool{"owner": true, "admin": true, "member": true}
@@ -33,13 +33,13 @@ type Workspace struct {
 	ArchivedAt *time.Time `db:"archived_at" json:"archived_at,omitempty"`
 }
 
-type CreateWorkspaceParams struct {
+type CreateParams struct {
 	Name    string
 	Slug    string
 	OwnerID string
 }
 
-func (params CreateWorkspaceParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.Name == "" {
 		return errors.New("name is required")
 	}
@@ -52,7 +52,7 @@ func (params CreateWorkspaceParams) Validate() error {
 	return nil
 }
 
-func CreateWorkspace(ctx context.Context, db *sqlx.DB, params CreateWorkspaceParams) (Workspace, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Workspace, error) {
 	if db == nil {
 		return Workspace{}, errors.New("db is required")
 	}
@@ -62,7 +62,7 @@ func CreateWorkspace(ctx context.Context, db *sqlx.DB, params CreateWorkspacePar
 	return createWorkspace(ctx, db, params)
 }
 
-func GetWorkspace(ctx context.Context, db *sqlx.DB, id string) (Workspace, error) {
+func Get(ctx context.Context, db *sqlx.DB, id string) (Workspace, error) {
 	if db == nil {
 		return Workspace{}, errors.New("db is required")
 	}
@@ -72,7 +72,7 @@ func GetWorkspace(ctx context.Context, db *sqlx.DB, id string) (Workspace, error
 	return getWorkspace(ctx, db, id)
 }
 
-func GetWorkspaceBySlug(ctx context.Context, db *sqlx.DB, slug string) (Workspace, error) {
+func GetBySlug(ctx context.Context, db *sqlx.DB, slug string) (Workspace, error) {
 	if db == nil {
 		return Workspace{}, errors.New("db is required")
 	}
@@ -82,7 +82,7 @@ func GetWorkspaceBySlug(ctx context.Context, db *sqlx.DB, slug string) (Workspac
 	return getWorkspaceBySlug(ctx, db, slug)
 }
 
-type WorkspaceMember struct {
+type Member struct {
 	WorkspaceID string     `db:"workspace_id" json:"workspace_id"`
 	UserID      string     `db:"user_id"      json:"user_id"`
 	Role        string     `db:"role"         json:"role"`
@@ -129,12 +129,12 @@ func (params UpdateMemberRoleParams) Validate() error {
 	return nil
 }
 
-func AddMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (WorkspaceMember, error) {
+func AddMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Member, error) {
 	if db == nil {
-		return WorkspaceMember{}, errors.New("db is required")
+		return Member{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return WorkspaceMember{}, err
+		return Member{}, err
 	}
 	return addMember(ctx, db, params)
 }
@@ -152,7 +152,7 @@ func RemoveMember(ctx context.Context, db *sqlx.DB, workspaceID, userID string) 
 	return removeMember(ctx, db, workspaceID, userID)
 }
 
-func ListMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]WorkspaceMember, error) {
+func ListMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Member, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -162,12 +162,12 @@ func ListMembers(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Worksp
 	return listMembers(ctx, db, workspaceID)
 }
 
-func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (WorkspaceMember, error) {
+func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (Member, error) {
 	if db == nil {
-		return WorkspaceMember{}, errors.New("db is required")
+		return Member{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return WorkspaceMember{}, err
+		return Member{}, err
 	}
 	return updateMemberRole(ctx, db, params)
 }
@@ -182,7 +182,7 @@ func ListByUser(ctx context.Context, db *sqlx.DB, userID string) ([]Workspace, e
 	return listByUser(ctx, db, userID)
 }
 
-func ArchiveWorkspace(ctx context.Context, db *sqlx.DB, id string) error {
+func Archive(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}

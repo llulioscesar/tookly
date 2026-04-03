@@ -17,7 +17,7 @@ import (
 
 const statusCols = `id, project_id, name, category, position, created_at, updated_at, archived_at`
 
-func createStatus(ctx context.Context, db *sqlx.DB, params CreateStatusParams) (Status, error) {
+func createStatus(ctx context.Context, db *sqlx.DB, params CreateParams) (Status, error) {
 	var status Status
 	err := db.QueryRowxContext(ctx,
 		`INSERT INTO statuses (project_id, name, category, position)
@@ -32,7 +32,7 @@ func createStatus(ctx context.Context, db *sqlx.DB, params CreateStatusParams) (
 	).StructScan(&status)
 	if err != nil {
 		if pgutil.IsUniqueViolation(err) {
-			return Status{}, ErrDuplicateStatus
+			return Status{}, ErrDuplicate
 		}
 		return Status{}, fmt.Errorf("create status: %w", err)
 	}
@@ -54,7 +54,7 @@ func listStatuses(ctx context.Context, db *sqlx.DB, projectID string) ([]Status,
 	return statuses, nil
 }
 
-func updateStatus(ctx context.Context, db *sqlx.DB, params UpdateStatusParams) (Status, error) {
+func updateStatus(ctx context.Context, db *sqlx.DB, params UpdateParams) (Status, error) {
 	var status Status
 	err := db.QueryRowxContext(ctx,
 		`UPDATE statuses
@@ -68,10 +68,10 @@ func updateStatus(ctx context.Context, db *sqlx.DB, params UpdateStatusParams) (
 	).StructScan(&status)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return Status{}, ErrStatusNotFound
+			return Status{}, ErrNotFound
 		}
 		if pgutil.IsUniqueViolation(err) {
-			return Status{}, ErrDuplicateStatus
+			return Status{}, ErrDuplicate
 		}
 		return Status{}, fmt.Errorf("update status: %w", err)
 	}
@@ -95,7 +95,7 @@ func archiveStatus(ctx context.Context, db *sqlx.DB, projectID, statusID string)
 		return fmt.Errorf("archive status rows affected: %w", err)
 	}
 	if n == 0 {
-		return ErrStatusNotFound
+		return ErrNotFound
 	}
 	return nil
 }

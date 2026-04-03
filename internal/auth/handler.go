@@ -3,7 +3,7 @@
 // Use of this software is governed by the Business Source License 1.1
 // included in the LICENSE file at the root of this repository.
 
-package users
+package auth
 
 import (
 	"errors"
@@ -20,17 +20,25 @@ import (
 )
 
 func RegisterRoutes(mux *http.ServeMux, db *sqlx.DB) {
+	// User routes
 	mux.HandleFunc("POST /users", handleCreate(db))
 	mux.HandleFunc("GET /users/{userID}", handleGet(db))
+	// Auth routes
 	mux.HandleFunc("POST /auth/login", handleLogin(db))
 	mux.HandleFunc("GET /auth/me", handleMe(db))
 	mux.HandleFunc("POST /auth/logout", handleLogout(db))
 	mux.HandleFunc("POST /auth/change-password", handleChangePassword(db))
+	// Email verification routes
+	mux.HandleFunc("POST /auth/verify-email", handleVerifyEmail(db))
+	mux.HandleFunc("POST /auth/resend-verification", handleResendVerification(db))
+	// Password reset routes
+	mux.HandleFunc("POST /auth/forgot-password", handleForgotPassword(db))
+	mux.HandleFunc("POST /auth/reset-password", handleResetPassword(db))
 }
 
 func fail(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, ErrUserNotFound):
+	case errors.Is(err, ErrNotFound):
 		respond.Error(w, http.StatusNotFound, err.Error())
 	case errors.Is(err, ErrDuplicateEmail):
 		respond.Error(w, http.StatusConflict, err.Error())
@@ -75,18 +83,17 @@ func handleCreate(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		params := CreateUserParams{Email: body.Email, Name: body.Name, Password: body.Password}
+		params := CreateParams{Email: body.Email, Name: body.Name, Password: body.Password}
 		if err := params.Validate(); err != nil {
 			respond.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		user, err := CreateUser(r.Context(), db, params)
+		user, err := Create(r.Context(), db, params)
 		if err != nil {
 			fail(w, err)
 			return
 		}
 
-		// Send verification email if required (inline to avoid import cycle)
 		TrySendVerificationEmail(r, db, user.ID, user.Email)
 
 		respond.JSON(w, http.StatusCreated, user)
@@ -103,7 +110,7 @@ func handleLogin(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusBadRequest, "invalid JSON")
 			return
 		}
-		user, err := AuthenticateUser(r.Context(), db, body.Email, body.Password)
+		user, err := Authenticate(r.Context(), db, body.Email, body.Password)
 		if err != nil {
 			fail(w, err)
 			return
@@ -139,9 +146,9 @@ func handleMe(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
-		user, err := GetUser(r.Context(), db, session.UserID)
+		user, err := Get(r.Context(), db, session.UserID)
 		if err != nil {
-			if errors.Is(err, ErrUserNotFound) {
+			if errors.Is(err, ErrNotFound) {
 				clearSessionCookie(w)
 				respond.JSON(w, http.StatusOK, map[string]any{"authenticated": false})
 				return
@@ -149,17 +156,11 @@ func handleMe(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusInternalServerError, "internal server error")
 			return
 		}
-		// Check if email verification is required (inline to avoid import cycle with instance)
-		verificationRequired := false
-		var reqVal string
-		if err := db.GetContext(r.Context(), &reqVal,
-			`SELECT value FROM instance_config WHERE key = 'email_verification_required'`); err == nil {
-			verificationRequired = reqVal == "true"
-		}
+		verificationRequired, _ := IsVerificationRequired(r.Context(), db)
 		respond.JSON(w, http.StatusOK, map[string]any{
 			"authenticated":               true,
-			"user":                         user,
-			"email_verification_required":  verificationRequired,
+			"user":                        user,
+			"email_verification_required": verificationRequired,
 		})
 	}
 }
@@ -222,7 +223,7 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 			respond.Error(w, http.StatusForbidden, "access denied")
 			return
 		}
-		user, err := GetUser(r.Context(), db, r.PathValue("userID"))
+		user, err := Get(r.Context(), db, r.PathValue("userID"))
 		if err != nil {
 			fail(w, err)
 			return
@@ -231,64 +232,146 @@ func handleGet(db *sqlx.DB) http.HandlerFunc {
 	}
 }
 
+func handleVerifyEmail(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Token string `json:"token"`
+		}
+		if err := respond.Decode(r, &body); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if body.Token == "" {
+			respond.Error(w, http.StatusBadRequest, "token is required")
+			return
+		}
+		if err := VerifyEmail(r.Context(), db, body.Token); err != nil {
+			if errors.Is(err, ErrVerifyTokenNotFound) || errors.Is(err, ErrVerifyTokenExpired) || errors.Is(err, ErrVerifyTokenUsed) {
+				respond.Error(w, http.StatusBadRequest, "invalid_or_expired_token")
+				return
+			}
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "verified"})
+	}
+}
+
+func handleResendVerification(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := authz.UserIDFromContext(r.Context())
+		if err != nil {
+			respond.Error(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		user, err := Get(r.Context(), db, userID)
+		if err != nil {
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		// Idempotent: already verified → success without sending
+		if user.EmailVerifiedAt != nil {
+			respond.JSON(w, http.StatusOK, map[string]string{"status": "already_verified"})
+			return
+		}
+		baseURL := resolveBaseURL(r.Context(), db, r)
+		if err := SendVerificationEmail(r.Context(), db, userID, user.Email, baseURL); err != nil {
+			respond.Error(w, http.StatusInternalServerError, "failed to send verification email")
+			return
+		}
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "sent"})
+	}
+}
+
+func handleForgotPassword(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Email string `json:"email"`
+		}
+		if err := respond.Decode(r, &body); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+
+		// Always return 200 — no email enumeration
+		user, err := GetByEmail(r.Context(), db, body.Email)
+		if err != nil || user.ArchivedAt != nil {
+			respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+
+		rawToken, err := CreateResetToken(r.Context(), db, user.ID)
+		if err != nil {
+			slog.Error("failed to create reset token", "error", err, "email", body.Email)
+			respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+
+		baseURL := resolveBaseURL(r.Context(), db, r)
+		resetURL := fmt.Sprintf("%s/reset-password?token=%s", baseURL, rawToken)
+
+		emailBody, err := email.RenderTemplate("password_reset", struct{ ResetURL string }{resetURL})
+		if err != nil {
+			slog.Error("failed to render reset email template", "error", err)
+			respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
+
+		smtpConfig, _ := loadSMTPConfig(r.Context(), db)
+		if err := email.Send(smtpConfig, email.Message{
+			To:      user.Email,
+			Subject: "Reset your Tookly password",
+			Body:    emailBody,
+		}); err != nil {
+			slog.Error("failed to send reset email", "error", err, "to", user.Email)
+		}
+
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	}
+}
+
+func handleResetPassword(db *sqlx.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Token       string `json:"token"`
+			NewPassword string `json:"new_password"`
+		}
+		if err := respond.Decode(r, &body); err != nil {
+			respond.Error(w, http.StatusBadRequest, "invalid JSON")
+			return
+		}
+		if body.Token == "" || body.NewPassword == "" {
+			respond.Error(w, http.StatusBadRequest, "token and new_password are required")
+			return
+		}
+
+		if err := ResetPassword(r.Context(), db, body.Token, body.NewPassword); err != nil {
+			if errors.Is(err, ErrResetTokenNotFound) || errors.Is(err, ErrResetTokenExpired) || errors.Is(err, ErrResetTokenUsed) {
+				respond.Error(w, http.StatusBadRequest, "invalid_or_expired_token")
+				return
+			}
+			if errors.Is(err, ErrPasswordTooShort) {
+				respond.Error(w, http.StatusUnprocessableEntity, err.Error())
+				return
+			}
+			respond.Error(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+
+		respond.JSON(w, http.StatusOK, map[string]string{"status": "password_reset"})
+	}
+}
+
 // TrySendVerificationEmail checks if email verification is required and sends
-// the verification email. Errors are logged but never fail the caller.
+// the verification email if so. Errors are logged but never fail the caller.
 func TrySendVerificationEmail(r *http.Request, db *sqlx.DB, userID, userEmail string) {
 	ctx := r.Context()
-	var reqVal string
-	if err := db.GetContext(ctx, &reqVal,
-		`SELECT value FROM instance_config WHERE key = 'email_verification_required'`); err != nil {
+	required, err := IsVerificationRequired(ctx, db)
+	if err != nil || !required {
 		return
 	}
-	if reqVal != "true" {
-		return
+	baseURL := resolveBaseURL(ctx, db, r)
+	if err := SendVerificationEmail(ctx, db, userID, userEmail, baseURL); err != nil {
+		slog.Error("failed to send verification email", "error", err, "user_id", userID)
 	}
-
-	rawToken, err := sessions.GenerateToken()
-	if err != nil {
-		slog.Error("verification token generation failed", "error", err)
-		return
-	}
-	tokenHash := sessions.HashToken(rawToken)
-	if _, err = db.ExecContext(ctx,
-		`INSERT INTO email_verification_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, NOW() + INTERVAL '24 hours')`,
-		userID, tokenHash); err != nil {
-		slog.Error("verification token insert failed", "error", err)
-		return
-	}
-
-	baseURL := ""
-	_ = db.GetContext(ctx, &baseURL, `SELECT value FROM instance_config WHERE key = 'base_url'`)
-	if baseURL == "" {
-		baseURL = r.Header.Get("Origin")
-	}
-	if baseURL == "" {
-		proto := r.Header.Get("X-Forwarded-Proto")
-		if proto == "" {
-			proto = "http"
-		}
-		baseURL = fmt.Sprintf("%s://%s", proto, r.Host)
-	}
-
-	body, err := email.RenderTemplate("email_verification", struct{ VerifyURL string }{
-		fmt.Sprintf("%s/verify-email?token=%s", baseURL, rawToken),
-	})
-	if err != nil {
-		slog.Error("verification email render failed", "error", err)
-		return
-	}
-
-	var smtpHost, smtpPortStr, smtpFrom, smtpUser, smtpPass string
-	_ = db.GetContext(ctx, &smtpHost, `SELECT value FROM instance_config WHERE key = 'smtp_host'`)
-	_ = db.GetContext(ctx, &smtpPortStr, `SELECT value FROM instance_config WHERE key = 'smtp_port'`)
-	_ = db.GetContext(ctx, &smtpFrom, `SELECT value FROM instance_config WHERE key = 'smtp_from'`)
-	_ = db.GetContext(ctx, &smtpUser, `SELECT value FROM instance_config WHERE key = 'smtp_username'`)
-	_ = db.GetContext(ctx, &smtpPass, `SELECT value FROM instance_config WHERE key = 'smtp_password'`)
-	if smtpHost == "" {
-		return
-	}
-	port := 587
-	fmt.Sscanf(smtpPortStr, "%d", &port)
-	_ = email.Send(&email.SMTPConfig{Host: smtpHost, Port: port, From: smtpFrom, Username: smtpUser, Password: smtpPass},
-		email.Message{To: userEmail, Subject: "Verify your Tookly email", Body: body})
 }

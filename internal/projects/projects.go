@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	ErrProjectNotFound     = errors.New("project not found")
-	ErrDuplicateProjectKey = errors.New("project key already exists in workspace")
-	ErrMemberNotFound      = errors.New("member not found")
+	ErrNotFound       = errors.New("project not found")
+	ErrDuplicateKey   = errors.New("project key already exists in workspace")
+	ErrMemberNotFound = errors.New("member not found")
 )
 
 var validRoles = map[string]bool{"admin": true, "member": true, "viewer": true}
@@ -37,7 +37,7 @@ type Project struct {
 
 var validTemplates = map[string]bool{"kanban": true, "scrum": true}
 
-type CreateProjectParams struct {
+type CreateParams struct {
 	WorkspaceID string
 	Name        string
 	Key         string
@@ -46,7 +46,7 @@ type CreateProjectParams struct {
 	Locale      string
 }
 
-func (params CreateProjectParams) Validate() error {
+func (params CreateParams) Validate() error {
 	if params.WorkspaceID == "" {
 		return errors.New("workspace_id is required")
 	}
@@ -62,7 +62,7 @@ func (params CreateProjectParams) Validate() error {
 	return nil
 }
 
-func CreateProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams) (Project, error) {
+func Create(ctx context.Context, db *sqlx.DB, params CreateParams) (Project, error) {
 	if db == nil {
 		return Project{}, errors.New("db is required")
 	}
@@ -72,7 +72,7 @@ func CreateProject(ctx context.Context, db *sqlx.DB, params CreateProjectParams)
 	return createProject(ctx, db, params)
 }
 
-func GetProject(ctx context.Context, db *sqlx.DB, id string) (Project, error) {
+func Get(ctx context.Context, db *sqlx.DB, id string) (Project, error) {
 	if db == nil {
 		return Project{}, errors.New("db is required")
 	}
@@ -82,7 +82,7 @@ func GetProject(ctx context.Context, db *sqlx.DB, id string) (Project, error) {
 	return getProject(ctx, db, id)
 }
 
-func ListProjects(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Project, error) {
+func List(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Project, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -92,7 +92,7 @@ func ListProjects(ctx context.Context, db *sqlx.DB, workspaceID string) ([]Proje
 	return listProjects(ctx, db, workspaceID)
 }
 
-type ProjectMember struct {
+type Member struct {
 	ProjectID  string     `db:"project_id"  json:"project_id"`
 	UserID     string     `db:"user_id"     json:"user_id"`
 	Role       string     `db:"role"        json:"role"`
@@ -139,12 +139,12 @@ func (params UpdateMemberRoleParams) Validate() error {
 	return nil
 }
 
-func AddMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (ProjectMember, error) {
+func AddMember(ctx context.Context, db *sqlx.DB, params AddMemberParams) (Member, error) {
 	if db == nil {
-		return ProjectMember{}, errors.New("db is required")
+		return Member{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return ProjectMember{}, err
+		return Member{}, err
 	}
 	return addMember(ctx, db, params)
 }
@@ -162,7 +162,7 @@ func RemoveMember(ctx context.Context, db *sqlx.DB, projectID, userID string) er
 	return removeMember(ctx, db, projectID, userID)
 }
 
-func ListMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]ProjectMember, error) {
+func ListMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]Member, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
@@ -172,17 +172,17 @@ func ListMembers(ctx context.Context, db *sqlx.DB, projectID string) ([]ProjectM
 	return listMembers(ctx, db, projectID)
 }
 
-func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (ProjectMember, error) {
+func UpdateMemberRole(ctx context.Context, db *sqlx.DB, params UpdateMemberRoleParams) (Member, error) {
 	if db == nil {
-		return ProjectMember{}, errors.New("db is required")
+		return Member{}, errors.New("db is required")
 	}
 	if err := params.Validate(); err != nil {
-		return ProjectMember{}, err
+		return Member{}, err
 	}
 	return updateMemberRole(ctx, db, params)
 }
 
-func ArchiveProject(ctx context.Context, db *sqlx.DB, id string) error {
+func Archive(ctx context.Context, db *sqlx.DB, id string) error {
 	if db == nil {
 		return errors.New("db is required")
 	}
