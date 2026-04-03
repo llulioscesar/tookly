@@ -10,6 +10,8 @@ front/.idea
 
 # IDE
 .idea/
+.curso/
+.vscode/
 
 # Go build artifacts
 /server
@@ -23,11 +25,4 @@ front/.idea
 .docker/
 
 # Local development and planning files
-AGENTS.md
-plans/
-plan-cloud.md
-
-# Design and asset files (local only)
-.tmp/
-design.pen
-images/
+.claude
