@@ -1,10 +1,10 @@
-<!-- Copyright (c) 2025 Start Codex SAS. All rights reserved. -->
-<!-- SPDX-License-Identifier: BUSL-1.1 -->
-
 <script lang="ts">
 	import { Tooltip as TooltipPrimitive } from "bits-ui";
+	import TooltipProvider from "./tooltip-provider.svelte";
 
 	let { open = $bindable(false), ...restProps }: TooltipPrimitive.RootProps = $props();
 </script>
 
-<TooltipPrimitive.Root bind:open {...restProps} />
+<TooltipProvider>
+	<TooltipPrimitive.Root bind:open {...restProps} />
+</TooltipProvider>

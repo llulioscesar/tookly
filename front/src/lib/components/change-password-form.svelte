@@ -2,6 +2,7 @@
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 <script lang="ts">
+	import { toast } from 'svelte-sonner';
 	import { auth, ApiError } from '$lib/api';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -58,10 +59,10 @@
 				current_password: currentPassword,
 				new_password: newPassword
 			});
-			success = true;
+			toast.success(m.toast_saved());
 			clearForm();
-			setTimeout(() => { success = false; }, 5000);
 		} catch (err) {
+			toast.error(m.toast_error());
 			if (err instanceof ApiError && err.status === 401) {
 				error = t.invalid;
 			} else {

@@ -95,6 +95,8 @@
 	}
 </script>
 
+<svelte:head><title>Invitations — Tookly</title></svelte:head>
+
 <div class="space-y-6">
 	<div>
 		<h2 class="text-lg font-semibold">{t.title}</h2>

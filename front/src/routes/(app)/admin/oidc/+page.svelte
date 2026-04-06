@@ -3,12 +3,15 @@
 
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { toast } from 'svelte-sonner';
 	import { instance } from '$lib/api';
 	import type { OIDCProvider } from '$lib/api';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import * as Empty from '$lib/components/ui/empty/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Separator } from '$lib/components/ui/separator/index.js';
+	import KeyIcon from '@lucide/svelte/icons/key';
 	import * as m from '$lib/paraglide/messages';
 	import { i18n } from '$lib/i18n.svelte';
 
@@ -93,7 +96,7 @@
 	}
 
 	async function handleSave() {
-		error = ''; successMsg = ''; saving = true;
+		error = ''; saving = true;
 		try {
 			if (editingId) {
 				const updated = await instance.oidc.update(editingId, {
@@ -111,11 +114,11 @@
 				});
 				providers = [...providers, created];
 			}
-			successMsg = t.saved;
-			setTimeout(() => { successMsg = ''; }, 3000);
+			toast.success(m.toast_saved());
 			resetForm();
 		} catch (err) {
 			error = err instanceof Error ? err.message : t.saveError;
+			toast.error(m.toast_error());
 		} finally {
 			saving = false;
 		}
@@ -126,28 +129,26 @@
 		try {
 			await instance.oidc.delete(id);
 			providers = providers.filter(p => p.id !== id);
-			successMsg = t.deleted;
-			setTimeout(() => { successMsg = ''; }, 3000);
+			toast.success(t.deleted);
 			if (editingId === id) resetForm();
 		} catch (err) {
 			error = err instanceof Error ? err.message : t.deleteError;
+			toast.error(m.toast_error());
 		}
 	}
 </script>
 
+<svelte:head><title>OIDC Providers — Tookly</title></svelte:head>
+
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
-		<h2 class="text-lg font-semibold">{t.title}</h2>
-		{#if !showForm}
+		<h2 class="font-heading text-lg font-bold uppercase tracking-wider">{t.title}</h2>
+		{#if !showForm && providers.length > 0}
 			<Button onclick={startCreate}>{t.add}</Button>
 		{/if}
 	</div>
 
-	{#if successMsg}
-		<div class="rounded-md bg-green-50 p-3 text-sm text-green-700 border border-green-200">
-			{successMsg}
-		</div>
-	{/if}
+
 
 	{#if showForm}
 		<Card.Root>
@@ -223,12 +224,16 @@
 	{/if}
 
 	{#if providers.length === 0 && !showForm}
-		<Card.Root>
-			<Card.Content class="py-12 text-center">
-				<p class="text-sm font-medium text-muted-foreground">{t.noProviders}</p>
-				<p class="mt-1 text-xs text-muted-foreground">{t.noProvidersDesc}</p>
-			</Card.Content>
-		</Card.Root>
+		<Empty.Root>
+			<Empty.Header>
+				<Empty.Media variant="icon"><KeyIcon /></Empty.Media>
+				<Empty.Title>{t.noProviders}</Empty.Title>
+				<Empty.Description>{t.noProvidersDesc}</Empty.Description>
+			</Empty.Header>
+			<Empty.Content>
+				<Button onclick={startCreate}>{t.add}</Button>
+			</Empty.Content>
+		</Empty.Root>
 	{:else if providers.length > 0}
 		<div class="space-y-2">
 			{#each providers as provider}

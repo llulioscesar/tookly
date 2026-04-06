@@ -68,10 +68,12 @@
 	}
 </script>
 
+<svelte:head><title>Dashboard — Tookly</title></svelte:head>
+
 {#if ready}
-	<div class="flex min-h-screen items-center justify-center">
-		<div class="w-full max-w-sm space-y-6 p-8">
-			<Empty.Root>
+	<div class="flex min-h-screen items-center justify-center bg-background">
+		<div class="w-full max-w-md p-8">
+			<Empty.Root class="gap-5">
 				<Empty.Header>
 					<Empty.Media variant="icon"><BuildingIcon /></Empty.Media>
 					<Empty.Title>{t.noWorkspaceTitle}</Empty.Title>

@@ -52,6 +52,8 @@
 	}
 </script>
 
+<svelte:head><title>Project — Tookly</title></svelte:head>
+
 <Empty.Root class="border border-dashed">
 	<Empty.Header>
 		<Empty.Media variant="icon"><LayoutIcon /></Empty.Media>

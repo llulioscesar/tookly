@@ -2,3 +2,5 @@
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 <script lang="ts"></script>
+
+<svelte:head><title>Settings — Tookly</title></svelte:head>

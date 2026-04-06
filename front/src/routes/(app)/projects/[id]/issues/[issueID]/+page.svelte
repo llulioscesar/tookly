@@ -70,6 +70,8 @@
 	}
 </script>
 
+<svelte:head><title>Issue — Tookly</title></svelte:head>
+
 <div class="mx-auto max-w-2xl space-y-6">
 	<Card.Root>
 		<Card.Header>

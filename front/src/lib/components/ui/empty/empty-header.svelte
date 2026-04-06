@@ -1,11 +1,20 @@
-<!-- Copyright (c) 2025 Start Codex SAS. All rights reserved. -->
-<!-- SPDX-License-Identifier: BUSL-1.1 -->
-
 <script lang="ts">
 	import { cn, type WithElementRef } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
-	let { ref = $bindable(null), class: className, children, ...restProps }: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
+
+	let {
+		ref = $bindable(null),
+		class: className,
+		children,
+		...restProps
+	}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
-<div bind:this={ref} data-slot="empty-header" class={cn("flex max-w-sm flex-col items-center gap-2 text-center", className)} {...restProps}>
+
+<div
+	bind:this={ref}
+	data-slot="empty-header"
+	class={cn("gap-2 flex max-w-sm flex-col items-center", className)}
+	{...restProps}
+>
 	{@render children?.()}
 </div>

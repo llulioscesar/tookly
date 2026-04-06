@@ -80,6 +80,8 @@
 	const projects = $derived($workspaceProjects ?? []);
 </script>
 
+<svelte:head><title>Workspace — Tookly</title></svelte:head>
+
 {#if projects.length === 0}
 	<Empty.Root class="border border-dashed">
 		<Empty.Header>

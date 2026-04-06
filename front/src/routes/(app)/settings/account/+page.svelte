@@ -2,6 +2,7 @@
 <!-- SPDX-License-Identifier: BUSL-1.1 -->
 
 <script lang="ts">
+	import * as Card from '$lib/components/ui/card/index.js';
 	import ChangePasswordForm from '$lib/components/change-password-form.svelte';
 	import { currentUser } from '$lib/stores/auth';
 	import * as m from '$lib/paraglide/messages';
@@ -17,19 +18,20 @@
 	});
 </script>
 
+<svelte:head><title>Account — Tookly</title></svelte:head>
+
 <div class="space-y-6">
-	<div>
-		<h2 class="text-lg font-semibold">{title}</h2>
-		<hr class="mt-3 border-border" />
-	</div>
+	<h2 class="font-heading text-lg font-bold uppercase tracking-wider">{title}</h2>
 
 	{#if $currentUser?.has_password === false}
-		<div class="rounded-md bg-muted p-4 text-sm text-muted-foreground">
-			<p>{t.noPassword}</p>
-			<a href="/forgot-password" class="mt-2 inline-block text-sm text-primary underline-offset-4 hover:underline">
-				{t.setPassword}
-			</a>
-		</div>
+		<Card.Root>
+			<Card.Content class="pt-6">
+				<p class="text-sm text-muted-foreground">{t.noPassword}</p>
+				<a href="/forgot-password" class="mt-2 inline-block text-sm font-bold text-primary underline-offset-4 hover:underline">
+					{t.setPassword}
+				</a>
+			</Card.Content>
+		</Card.Root>
 	{:else}
 		<ChangePasswordForm />
 	{/if}

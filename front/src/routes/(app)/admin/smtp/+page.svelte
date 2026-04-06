@@ -3,6 +3,7 @@
 
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { toast } from 'svelte-sonner';
 	import { instance } from '$lib/api';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
@@ -53,37 +54,37 @@
 
 	async function handleSave() {
 		error = '';
-		saved = false;
 		saving = true;
 		try {
 			await instance.smtp.save({ host, port, from, username, password });
-			saved = true;
-			setTimeout(() => { saved = false; }, 3000);
+			toast.success(m.toast_saved());
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to save';
+			error = err instanceof Error ? err.message : m.toast_error();
+			toast.error(m.toast_error());
 		} finally {
 			saving = false;
 		}
 	}
 
 	async function handleTest() {
-		testResult = '';
 		error = '';
 		testing = true;
 		try {
 			const result = await instance.smtp.test();
-			testResult = t.testSent({ email: result.to });
-			setTimeout(() => { testResult = ''; }, 5000);
+			toast.success(t.testSent({ email: result.to }));
 		} catch (err) {
 			error = err instanceof Error ? err.message : t.testError;
+			toast.error(t.testError);
 		} finally {
 			testing = false;
 		}
 	}
 </script>
 
+<svelte:head><title>SMTP — Tookly</title></svelte:head>
+
 <div class="space-y-6">
-	<h2 class="text-lg font-semibold">{t.title}</h2>
+	<h2 class="font-heading text-lg font-bold uppercase tracking-wider">{t.title}</h2>
 
 	<Card.Root>
 		<Card.Content class="space-y-4 pt-6">
@@ -127,12 +128,6 @@
 				<Button variant="outline" onclick={handleTest} disabled={testing || !host}>
 					{t.test}
 				</Button>
-				{#if saved}
-					<span class="text-sm text-green-600">{t.saved}</span>
-				{/if}
-				{#if testResult}
-					<span class="text-sm text-green-600">{testResult}</span>
-				{/if}
 			</div>
 		</Card.Content>
 	</Card.Root>

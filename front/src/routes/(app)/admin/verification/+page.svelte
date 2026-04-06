@@ -3,9 +3,10 @@
 
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { toast } from 'svelte-sonner';
 	import { instance } from '$lib/api';
-	import * as Card from '$lib/components/ui/card/index.js';
-	import { Button } from '$lib/components/ui/button/index.js';
+	import * as Item from '$lib/components/ui/item/index.js';
+	import { Switch } from '$lib/components/ui/switch/index.js';
 	import * as m from '$lib/paraglide/messages';
 	import { i18n } from '$lib/i18n.svelte';
 
@@ -23,50 +24,38 @@
 
 	let required = $state(false);
 	let saving = $state(false);
-	let saved = $state(false);
 
 	$effect(() => { required = data.verificationRequired; });
 
 	async function handleToggle() {
 		saving = true;
-		saved = false;
 		try {
 			required = !required;
 			await instance.verification.save({ required });
-			saved = true;
-			setTimeout(() => { saved = false; }, 3000);
+			toast.success(m.toast_saved());
 		} catch {
-			required = !required; // revert
+			required = !required;
+			toast.error(m.toast_error());
 		} finally {
 			saving = false;
 		}
 	}
 </script>
 
-<div class="space-y-6">
-	<h2 class="text-lg font-semibold">{t.title}</h2>
+<svelte:head><title>Verification — Tookly</title></svelte:head>
 
-	<Card.Root>
-		<Card.Content class="flex items-center justify-between pt-6">
-			<div>
-				<p class="text-sm font-medium">{t.toggle}</p>
-				<p class="text-xs text-muted-foreground">
-					{required ? t.enabled : t.disabled}
-				</p>
-			</div>
-			<div class="flex items-center gap-3">
-				<Button
-					variant={required ? 'default' : 'outline'}
-					size="sm"
-					onclick={handleToggle}
-					disabled={saving}
-				>
-					{required ? 'On' : 'Off'}
-				</Button>
-				{#if saved}
-					<span class="text-xs text-green-600">Saved</span>
-				{/if}
-			</div>
-		</Card.Content>
-	</Card.Root>
+<div class="space-y-6">
+	<h2 class="font-heading text-lg font-bold uppercase tracking-wider">{t.title}</h2>
+
+	<Item.Group>
+		<Item.Root variant="outline">
+			<Item.Content>
+				<Item.Title>{t.toggle}</Item.Title>
+				<Item.Description>{required ? t.enabled : t.disabled}</Item.Description>
+			</Item.Content>
+			<Item.Actions>
+				<Switch checked={required} onCheckedChange={handleToggle} disabled={saving} />
+			</Item.Actions>
+		</Item.Root>
+	</Item.Group>
 </div>

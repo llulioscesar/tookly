@@ -17,6 +17,8 @@
 	});
 </script>
 
+<svelte:head><title>Account — Tookly</title></svelte:head>
+
 <div class="space-y-6">
 	<div>
 		<h2 class="text-lg font-semibold">{title}</h2>

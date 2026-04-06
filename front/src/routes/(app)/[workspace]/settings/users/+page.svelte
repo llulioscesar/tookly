@@ -6,7 +6,10 @@
 	import { i18n } from '$lib/i18n.svelte';
 
 	const title = $derived.by(() => { i18n.locale; return m.settings_users_title(); });
+	const comingSoon = $derived.by(() => { i18n.locale; return m.coming_soon(); });
 </script>
+
+<svelte:head><title>Users — Tookly</title></svelte:head>
 
 <div class="space-y-6">
 	<div>
@@ -23,6 +26,6 @@
 			<path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
 			<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
 		</svg>
-		<p class="text-sm">Coming soon</p>
+		<p class="text-sm">{comingSoon}</p>
 	</div>
 </div>
